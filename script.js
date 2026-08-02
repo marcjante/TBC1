@@ -21,7 +21,7 @@ try{
   console.error('No se pudo inicializar Firebase, usando localStorage:', e);
   useFirestore = false;
 }
-
+ 
 function reflectMode(){
   const badge = document.getElementById('modeBadge');
   const foot = document.getElementById('modeFootnote');
@@ -36,7 +36,7 @@ function reflectMode(){
     foot.textContent = "Dades desades només en aquest navegador (localStorage). Configura firebase-config.js per compartir-les entre dispositius — vegeu README.md.";
   }
 }
-
+ 
 async function sGet(key){
   if(useFirestore){
     try{
@@ -73,7 +73,7 @@ async function sDelete(key){
   try{ localStorage.removeItem(key); }
   catch(e){ console.error('sDelete(localStorage) failed for', key, e); }
 }
-
+ 
 /* Live sync: when Firestore is active, every device watching the page
    re-renders automatically as soon as any other device writes data. */
 function startRealtimeSync(){
@@ -96,7 +96,7 @@ function startRealtimeSync(){
     catch(e){ console.error('Render tras sincronització en temps real ha fallat', e); }
   }, (err)=> console.error('Realtime sync error', err));
 }
-
+ 
 /* ---------------- protocol: visit scheduling ---------------- */
 function computeVisits(type, startDateStr){
   const start = new Date(startDateStr+'T00:00:00');
@@ -120,7 +120,7 @@ function computeVisits(type, startDateStr){
     return {date: d.toISOString().slice(0,10), label: v.label, done:false};
   });
 }
-
+ 
 /* ---------------- triage bot ---------------- */
 function norm(s){
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -165,12 +165,12 @@ function botReply(triageResult){
       return "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.";
   }
 }
-
+ 
 /* ---------------- consulta conversacional a la base de coneixement (kb/buscador.js) ----------------
    Complementa la resposta de triatge amb informació dels documents de referència
    (OMS/CDC/ECDC) NOMÉS quan el missatge no és una alerta urgent/moderada, per no
    diluir mai un avís de seguretat amb informació documental.
-
+ 
    No usa IA: és un petit arbre de preguntes per regles. Si el missatge coincideix
    amb un tema conegut, el bot fa 1-2 preguntes de seguiment (guardades a
    p.kbFlow) abans de donar la resposta final basada en els documents. Si no
@@ -209,12 +209,12 @@ const KB_TOPICS = [
     ]
   }
 ];
-
+ 
 function detectKbTopic(text){
   const t = norm(text);
   return KB_TOPICS.find(topic => topic.match.test(t)) || null;
 }
-
+ 
 async function buildKbAnswer(queryText){
   if(!window.TB_KB) return null;
   try{
@@ -237,7 +237,7 @@ async function buildKbAnswer(queryText){
     return null;
   }
 }
-
+ 
 /* Gestiona el flux de conversa amb la base de coneixement per a un pacient.
    Retorna el text que el bot ha de dir a continuació, o null si no hi ha res
    a afegir. Modifica p.kbFlow directament (s'ha de cridar savePatient després). */
@@ -246,7 +246,7 @@ async function advanceKbConversation(p, text, triageResult){
     delete p.kbFlow; // la seguretat sempre té prioritat: cancel·la qualsevol flux obert
     return null;
   }
-
+ 
   if(p.kbFlow){
     const topic = KB_TOPICS.find(tp => tp.id === p.kbFlow.topicId);
     if(!topic){ delete p.kbFlow; return null; }
@@ -262,22 +262,22 @@ async function advanceKbConversation(p, text, triageResult){
     const answer = await buildKbAnswer(combined);
     return answer;
   }
-
+ 
   const topic = detectKbTopic(text);
   if(topic){
     p.kbFlow = { topicId: topic.id, step: 0, originalText: text, answers: [] };
     return topic.questions[0];
   }
-
+ 
   // Tema no reconegut: mantenim el comportament directe d'abans (sense preguntes).
   return await buildKbAnswer(text);
 }
-
+ 
 /* ---------------- state ---------------- */
 let patients = {}; // id -> patient object
 let settings = {professionalPhone:'', professionalName:''};
 let currentPatientId = null;
-
+ 
 async function loadAll(){
   if(useFirestore) return; // realtime listener (startRealtimeSync) populates patients/settings instead
   const idx = await sGet('patients-index');
@@ -296,7 +296,7 @@ async function savePatient(p){
   if(!idx.ids.includes(p.id)){ idx.ids.push(p.id); await sSet('patients-index', idx); }
 }
 async function saveSettings(){ await sSet('settings', settings); }
-
+ 
 function waLink(phone, text){
   const clean = (phone||'').replace(/[^0-9+]/g,'');
   return 'https://wa.me/'+clean.replace('+','')+'?text='+encodeURIComponent(text);
@@ -309,13 +309,13 @@ function daysUntil(d){
   const target = new Date(d+'T00:00:00');
   return Math.round((target-today)/86400000);
 }
-
+ 
 /* ---------------- render: chat view ---------------- */
 function renderChatView(){
   const el = document.getElementById('viewChat');
   const ids = Object.keys(patients);
   let optionsHtml = ids.map(id=>`<option value="${id}" ${id===currentPatientId?'selected':''}>${patients[id].name} (${patients[id].type})</option>`).join('');
-
+ 
   el.innerHTML = `
     <div class="card">
       <label>Pacient actiu</label>
@@ -329,7 +329,7 @@ function renderChatView(){
     <div id="newPatientForm"></div>
     <div id="chatArea"></div>
   `;
-
+ 
   document.getElementById('patientSelect').onchange = (e)=>{
     currentPatientId = e.target.value || null;
     renderChatView();
@@ -345,7 +345,7 @@ function renderChatView(){
     if(!confirm('Esborrar tots els pacients i la configuració? Aquesta acció no es pot desfer.')) return;
     await clearAllData(); renderChatView();
   };
-
+ 
   const chatArea = document.getElementById('chatArea');
   if(!currentPatientId || !patients[currentPatientId]){
     chatArea.innerHTML = `<div class="empty">Selecciona un pacient o crea'n un de nou per començar el xat.</div>`;
@@ -374,10 +374,10 @@ function renderChatView(){
   `;
   const box = document.getElementById('chatbox');
   box.scrollTop = box.scrollHeight;
-
+ 
   document.getElementById('sendBtn').onclick = sendMessage;
   document.getElementById('msgInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
-
+ 
   const waBtn = document.getElementById('waAlertBtn');
   if(waBtn){
     waBtn.onclick = ()=>{
@@ -391,7 +391,7 @@ function renderChatView(){
     };
   }
 }
-
+ 
 function newPatientFormHtml(){
   const today = new Date().toISOString().slice(0,10);
   return `
@@ -436,7 +436,7 @@ function bindNewPatientForm(){
     renderChatView();
   };
 }
-
+ 
 async function sendMessage(){
   const input = document.getElementById('msgInput');
   const text = input.value.trim();
@@ -453,7 +453,7 @@ async function sendMessage(){
   await savePatient(p);
   input.value='';
   renderChatView();
-
+ 
   // Conversa amb la base de coneixement: pot ser una pregunta de seguiment
   // (si el tema es reconeix i encara falten passos) o la resposta final.
   const kbText = await advanceKbConversation(p, text, tr);
@@ -469,14 +469,14 @@ function escapeHtml(s){
   return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function pendingAlerts(p){ return (p.alerts||[]).filter(a=>!a.acknowledged); }
-
+ 
 /* ---------------- demo data ---------------- */
 async function seedDemo(){
   const today = new Date();
   const iso = (d)=> d.toISOString().slice(0,10);
   const d1start = new Date(today); d1start.setDate(d1start.getDate()-20);
   const d2start = new Date(today); d2start.setDate(d2start.getDate()-40);
-
+ 
   const p1 = {
     id:'demo_tbc_1', name:'Marta Vidal (demo)', phone:'+34600000001',
     type:'TBC', treatmentStart: iso(d1start),
@@ -512,12 +512,12 @@ async function clearAllData(){
   await sDelete('settings');
   patients = {}; settings = {professionalPhone:'', professionalName:''}; currentPatientId = null;
 }
-
+ 
 /* ---------------- render: professional panel ---------------- */
 function renderPanelView(){
   const el = document.getElementById('viewPanel');
   const list = Object.values(patients);
-
+ 
   function status(p){
     const pend = pendingAlerts(p);
     if(pend.some(a=>a.level==='urgent')) return 3;
@@ -527,7 +527,7 @@ function renderPanelView(){
     return 0;
   }
   list.sort((a,b)=> status(b)-status(a) || (a.visits.find(v=>!v.done)?.date||'').localeCompare(b.visits.find(v=>!v.done)?.date||''));
-
+ 
   el.innerHTML = `
     <div class="card">
       <label>Telèfon professional (per rebre avisos)</label>
@@ -547,7 +547,7 @@ function renderPanelView(){
     await saveSettings();
     alert('Configuració desada.');
   };
-
+ 
   const listEl = document.getElementById('patientList');
   list.forEach(p=>{
     const next = p.visits.find(v=>!v.done);
@@ -565,7 +565,7 @@ function renderPanelView(){
     } else {
       alertHtml = `<div class="alertline ok">Seguiment completat.</div>`;
     }
-
+ 
     const card = document.createElement('div');
     card.className = 'patient-card';
     card.innerHTML = `
@@ -593,7 +593,7 @@ function renderPanelView(){
     `;
     listEl.appendChild(card);
   });
-
+ 
   listEl.querySelectorAll('[data-open]').forEach(b=> b.onclick = ()=>{
     currentPatientId = b.dataset.open;
     switchTab('chat');
@@ -618,7 +618,7 @@ function renderPanelView(){
     renderPanelView();
   });
 }
-
+ 
 /* ---------------- tabs ---------------- */
 function switchTab(which){
   const chatBtn = document.getElementById('tabChatBtn');
@@ -637,19 +637,19 @@ function switchTab(which){
 }
 document.getElementById('tabChatBtn').onclick = ()=>switchTab('chat');
 document.getElementById('tabPanelBtn').onclick = ()=>switchTab('panel');
-
+ 
 /* ---------------- PWA: service worker registration ---------------- */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e));
   });
 }
-
+ 
 /* ---------------- init ---------------- */
 reflectMode();
 try{ renderChatView(); }
 catch(e){ console.error('Render inicial ha fallat:', e); }
-
+ 
 if(useFirestore){
   startRealtimeSync();
 } else {
@@ -660,7 +660,7 @@ if(useFirestore){
     console.error('loadAll ha fallat:', e);
   });
 }
-
+ 
 /* Precarrega la base de coneixement TB (kb/buscador.js) en segon pla,
    perquè estigui llesta quan el pacient escrigui el primer missatge. */
 if(window.TB_KB){
