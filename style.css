@@ -1,0 +1,196 @@
+:root{
+    --bg:#EEF3F0;
+    --surface:#FFFFFF;
+    --ink:#152623;
+    --ink-soft:#4A5B57;
+    --teal:#1F6F72;
+    --teal-dark:#123F42;
+    --coral:#B8433A;
+    --coral-bg:#FBEAE8;
+    --amber:#B4791E;
+    --amber-bg:#FBF1DE;
+    --sage:#4F8562;
+    --sage-bg:#E9F2EA;
+    --line:#D7E0DB;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 0 60px;min-height:100vh;}
+  header.top{
+    padding:28px 20px 18px;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  header.top h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:26px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .top-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  #modeBadge{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;font-weight:600;
+    padding:3px 9px;border-radius:20px;
+    letter-spacing:.03em;white-space:nowrap;
+    background:var(--line);color:var(--ink-soft);
+  }
+  #modeBadge.shared{background:var(--sage-bg);color:var(--sage);}
+  #modeBadge.local{background:var(--amber-bg);color:var(--amber);}
+  header.top p{margin:0;color:var(--ink-soft);font-size:13px;}
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    padding:12px 20px 0;
+    background:var(--surface);
+  }
+  nav.tabs button{
+    flex:1;
+    border:none;
+    background:transparent;
+    padding:10px 8px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+  }
+  nav.tabs button.active{color:var(--teal-dark);border-bottom:2px solid var(--teal);}
+  main{padding:18px 16px 40px;}
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+  input[type=text],input[type=tel],input[type=date],select{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+    background:#fcfdfc;
+    color:var(--ink);
+  }
+  .row2{display:flex;gap:10px;}
+  .row2 > div{flex:1;}
+  button.primary{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    padding:11px 16px;
+    border-radius:8px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    width:100%;
+    margin-top:12px;
+  }
+  button.primary:hover{background:var(--teal-dark);}
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.wa{
+    background:var(--sage-bg);
+    color:var(--sage);
+    border:1px solid #cfe4d4;
+    padding:9px 12px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+    width:100%;
+  }
+  button.wa.urgent{background:var(--coral-bg);color:var(--coral);border-color:#f0c9c5;}
+
+  select#patientSelect{margin-bottom:10px;}
+
+  .chatbox{
+    height:360px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:6px 2px;
+  }
+  .msg{max-width:82%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.4;}
+  .msg.patient{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:3px;}
+  .msg.bot{align-self:flex-start;background:#F1F4F2;color:var(--ink);border-bottom-left-radius:3px;}
+  .msg.bot.urgent{background:var(--coral-bg);border:1px solid #f0c9c5;}
+  .msg.bot.moderate{background:var(--amber-bg);border:1px solid #edd9ad;}
+  .msg time{display:block;font-size:10px;opacity:.6;margin-top:4px;font-family:'IBM Plex Mono',monospace;}
+  .composer{display:flex;gap:8px;margin-top:12px;}
+  .composer input{flex:1;}
+  .composer button{background:var(--teal);color:#fff;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;}
+
+  .empty{color:var(--ink-soft);font-size:13.5px;text-align:center;padding:30px 10px;}
+
+  .patient-card{
+    display:flex;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:12px;
+    overflow:hidden;
+  }
+  .tab{
+    width:8px;
+    flex-shrink:0;
+  }
+  .tab.TBC{background:var(--coral);}
+  .tab.ITL{background:var(--teal);}
+  .patient-body{padding:13px 15px;flex:1;}
+  .patient-head{display:flex;justify-content:space-between;align-items:baseline;}
+  .patient-head h3{margin:0;font-family:'Fraunces',serif;font-size:17px;font-weight:600;}
+  .badge{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    font-weight:500;
+    padding:2px 7px;
+    border-radius:20px;
+    letter-spacing:.03em;
+  }
+  .badge.TBC{background:var(--coral-bg);color:var(--coral);}
+  .badge.ITL{background:#E4F1F1;color:var(--teal-dark);}
+  .meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
+  .alertline{
+    margin-top:8px;
+    font-size:12.5px;
+    font-weight:600;
+    padding:6px 9px;
+    border-radius:7px;
+  }
+  .alertline.due{background:var(--amber-bg);color:var(--amber);}
+  .alertline.urgentline{background:var(--coral-bg);color:var(--coral);}
+  .alertline.ok{background:var(--sage-bg);color:var(--sage);}
+  .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .actions button{flex:1;min-width:120px;}
+
+  .visitlist{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;}
+  .visitrow{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:4px 0;}
+  .visitrow.done{color:var(--ink-soft);text-decoration:line-through;}
+  .visitrow .dot{width:6px;height:6px;border-radius:50%;background:var(--line);display:inline-block;margin-right:6px;}
+  .visitrow.next .dot{background:var(--amber);}
+  .visitrow button{border:none;background:transparent;color:var(--teal);font-weight:700;font-size:11.5px;cursor:pointer;}
+
+  .footnote{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:8px;line-height:1.5;}
+  .section-title{font-family:'Fraunces',serif;font-size:15px;font-weight:600;margin:22px 0 10px;color:var(--teal-dark);}

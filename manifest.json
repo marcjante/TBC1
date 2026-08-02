@@ -1,0 +1,23 @@
+{
+  "name": "Seguiment TBC / ITL",
+  "short_name": "TBC Seguiment",
+  "description": "Xat de triatge i seguiment per a pacients en tractament de TBC o ITL",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF3F0",
+  "theme_color": "#1F6F72",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

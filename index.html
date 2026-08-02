@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguiment TBC / ITL</title>
+<meta name="description" content="Xat de triatge i seguiment per a pacients en tractament de TBC o ITL">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F6F72">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="top-head">
+      <h1>Seguiment TBC · ITL</h1>
+      <span class="badge" id="modeBadge">···</span>
+    </div>
+    <p>Consulta d'infermeria — triatge de missatges i programació de visites</p>
+  </header>
+  <nav class="tabs">
+    <button id="tabChatBtn" class="active">Xat pacient</button>
+    <button id="tabPanelBtn">Panell professional</button>
+  </nav>
+  <main>
+    <div id="viewChat"></div>
+    <div id="viewPanel" style="display:none;"></div>
+  </main>
+  <p class="footnote" id="modeFootnote">Comprovant mode de connexió…</p>
+</div>
+
+<!-- Firebase (opcional): si no configuras firebase-config.js, la app sigue
+     funcionando en modo local (localStorage). Ver README.md. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
