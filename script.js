@@ -151,18 +151,104 @@ function triage(text){
   }
   return {level:'info', label:'Consulta general'};
 }
-function botReply(triageResult){
+/* Detecta si el pacient escriu en català o castellà, a partir de paraules
+   distintives (no és perfecte, però és suficient per triar l'idioma de les
+   respostes del bot). Per defecte assumim castellà, ja que és l'idioma més
+   habitual entre els pacients que fan servir l'app. */
+const CATALAN_MARKERS = /\b(tinc|vull|aixo|aquest|aquesta|tambe|quant|gracies|voldria|estic|molt|puc|dic|es troba|em trobo)\b/;
+function detectLang(text){
+  return CATALAN_MARKERS.test(norm(text)) ? 'ca' : 'es';
+}
+
+const REPLY_STRINGS = {
+  ca: {
+    urgent: "Aquest símptoma requereix valoració avui mateix. Contacta ara amb el teu equip de TBC; si empitjora o tens febre alta o dificultat per respirar, acut a urgències. No et prenguis la propera dosi fins parlar amb el professional.",
+    moderate: "Pot tractar-se d'un efecte relacionat amb el tractament. Contacta amb el teu equip de referència en les properes 24–48h. No suspenguis la medicació pel teu compte.",
+    mildForgot: "Si fa poques hores de l'horari habitual, pren la dosi oblidada. Si ja és a prop de la següent presa, no dupliquis dosi: continua la pauta normal.",
+    mildGeneric: "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.",
+    infoDefault: "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.",
+    ack: ["D'acord. ", "Entès. ", "Gràcies per explicar-ho. ", "Perfecte, seguim. ", "Molt bé. "],
+    kbIntro: "📚 Amb tot el que m'has explicat, això és el que diuen els documents de referència (en anglès): ",
+    topics: {
+      symptoms: {
+        opener: "Sento que no et trobis del tot bé. ",
+        questions: [
+          "Per entendre-ho millor: des de quan tens aquest símptoma?",
+          "Ha anat a més, es manté igual o ha millorat des que va començar?"
+        ]
+      },
+      treatment: {
+        opener: "Cap problema, mirem-nos junts el dubte sobre el tractament. ",
+        questions: [
+          "Quin medicament del tractament et genera el dubte?",
+          "El dubte és sobre la dosi, la durada del tractament, o com prendre'l?"
+        ]
+      },
+      side_effects: {
+        opener: "Gràcies per avisar-ho, ho mirem junts. ",
+        questions: [
+          "Quin efecte concret has notat?",
+          "Des de quan el notes, i ha anat a més des que va aparèixer?"
+        ]
+      },
+      contagion: {
+        opener: "Bona pregunta, aclarim-ho. ",
+        questions: [
+          "El dubte és sobre si tu pots contagiar algú altre, o sobre com et vas poder contagiar tu?"
+        ]
+      }
+    }
+  },
+  es: {
+    urgent: "Este síntoma requiere valoración hoy mismo. Contacta ahora con tu equipo de TBC; si empeora o tienes fiebre alta o dificultad para respirar, acude a urgencias. No te tomes la próxima dosis hasta hablar con el profesional.",
+    moderate: "Puede tratarse de un efecto relacionado con el tratamiento. Contacta con tu equipo de referencia en las próximas 24–48h. No suspendas la medicación por tu cuenta.",
+    mildForgot: "Si hace pocas horas del horario habitual, toma la dosis olvidada. Si ya está cerca de la siguiente toma, no dupliques dosis: continúa la pauta normal.",
+    mildGeneric: "Anota el síntoma y coméntalo en la próxima visita. Contacta antes si empeora o aparecen otros.",
+    infoDefault: "Gracias por el mensaje. Un profesional lo revisará. Contacta enseguida si tienes sangre en el esputo, fiebre alta, dificultad para respirar o color amarillento en piel u ojos.",
+    ack: ["De acuerdo. ", "Entendido. ", "Gracias por explicarlo. ", "Perfecto, seguimos. ", "Muy bien. "],
+    kbIntro: "📚 Con todo lo que me has explicado, esto es lo que dicen los documentos de referencia (en inglés): ",
+    topics: {
+      symptoms: {
+        opener: "Siento que no te encuentres del todo bien. ",
+        questions: [
+          "Para entenderlo mejor: ¿desde cuándo tienes este síntoma?",
+          "¿Ha ido a más, se mantiene igual o ha mejorado desde que empezó?"
+        ]
+      },
+      treatment: {
+        opener: "Sin problema, miramos juntos la duda sobre el tratamiento. ",
+        questions: [
+          "¿Qué medicamento del tratamiento te genera la duda?",
+          "¿La duda es sobre la dosis, la duración del tratamiento, o cómo tomarlo?"
+        ]
+      },
+      side_effects: {
+        opener: "Gracias por avisar, lo miramos juntos. ",
+        questions: [
+          "¿Qué efecto concreto has notado?",
+          "¿Desde cuándo lo notas, y ha ido a más desde que apareció?"
+        ]
+      },
+      contagion: {
+        opener: "Buena pregunta, lo aclaramos. ",
+        questions: [
+          "¿La duda es sobre si tú puedes contagiar a otra persona, o sobre cómo te pudiste contagiar tú?"
+        ]
+      }
+    }
+  }
+};
+
+function botReply(triageResult, lang){
+  const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
   switch(triageResult.level){
-    case 'urgent':
-      return "Aquest símptoma requereix valoració avui mateix. Contacta ara amb el teu equip de TBC; si empitjora o tens febre alta o dificultat per respirar, acut a urgències. No et prenguis la propera dosi fins parlar amb el professional.";
-    case 'moderate':
-      return "Pot tractar-se d'un efecte relacionat amb el tractament. Contacta amb el teu equip de referència en les properes 24–48h. No suspenguis la medicació pel teu compte.";
+    case 'urgent': return s.urgent;
+    case 'moderate': return s.moderate;
     case 'mild':
-      if(triageResult.label==='Oblit de dosi')
-        return "Si fa poques hores de l'horari habitual, pren la dosi oblidada. Si ja és a prop de la següent presa, no dupliquis dosi: continua la pauta normal.";
-      return "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.";
+      if(triageResult.label==='Oblit de dosi') return s.mildForgot;
+      return s.mildGeneric;
     default:
-      return "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.";
+      return s.infoDefault;
   }
 }
 
@@ -175,58 +261,30 @@ function botReply(triageResult){
    amb un tema conegut, el bot fa 1-2 preguntes de seguiment (guardades a
    p.kbFlow) abans de donar la resposta final basada en els documents. Si no
    reconeix cap tema, manté el comportament anterior (resposta directa si troba
-   res rellevant). Un símptoma urgent/moderat sempre cancel·la el flux en curs. */
-const KB_TOPICS = [
-  {
-    id: 'symptoms',
-    match: /tos|fiebre|febre|cansanci|fatiga|sudor|sintoma|malestar|molest|no.*trob.*be|no me encuentro bien|no estic be/,
-    opener: "Sento que no et trobis del tot bé. ",
-    questions: [
-      "Per entendre-ho millor: des de quan tens aquest símptoma?",
-      "Ha anat a més, es manté igual o ha millorat des que va començar?"
-    ]
-  },
-  {
-    id: 'treatment',
-    match: /tractament|medicament|pastilla|dosi|isoniazid|rifampicin|rifapentin|pirazinamid|etambutol|durada|cuanto dura|quant.*dura|quan.*acaba|cuando termino/,
-    opener: "Cap problema, mirem-nos junts el dubte sobre el tractament. ",
-    questions: [
-      "Quin medicament del tractament et genera el dubte?",
-      "El dubte és sobre la dosi, la durada del tractament, o com prendre'l?"
-    ]
-  },
-  {
-    id: 'side_effects',
-    match: /efecte|efectos|secundari|reaccio|nausea|vomit|picor|erupci|em fa mal|em sento malament|me siento mal/,
-    opener: "Gràcies per avisar-ho, ho mirem junts. ",
-    questions: [
-      "Quin efecte concret has notat?",
-      "Des de quan el notes, i ha anat a més des que va aparèixer?"
-    ]
-  },
-  {
-    id: 'contagion',
-    match: /contagi|transmis|contacte|infectar|puc.*contagiar|puedo contagiar|risc.*altres/,
-    opener: "Bona pregunta, aclarim-ho. ",
-    questions: [
-      "El dubte és sobre si tu pots contagiar algú altre, o sobre com et vas poder contagiar tu?"
-    ]
-  }
-];
+   res rellevant). Un símptoma urgent/moderat sempre cancel·la el flux en curs.
 
-const KB_ACK_PHRASES = [
-  "D'acord. ", "Entès. ", "Gràcies per explicar-ho. ", "Perfecte, seguim. ", "Molt bé. "
-];
-function pickAck(){
-  return KB_ACK_PHRASES[Math.floor(Math.random()*KB_ACK_PHRASES.length)];
+   Les preguntes del bot es responen en l'idioma detectat al primer missatge
+   del tema (guardat a p.kbFlow.lang). El text del document en si segueix en
+   anglès perquè els PDF originals estan en anglès (no hi ha traducció automàtica). */
+const KB_TOPIC_MATCHERS = {
+  symptoms: /tos|fiebre|febre|cansanci|fatiga|sudor|sintoma|malestar|molest|no.*trob.*be|no me encuentro bien|no estic be/,
+  treatment: /tractament|medicament|pastilla|dosi|isoniazid|rifampicin|rifapentin|pirazinamid|etambutol|durada|cuanto dura|quant.*dura|quan.*acaba|cuando termino/,
+  side_effects: /efecte|efectos|secundari|reaccio|nausea|vomit|picor|erupci|em fa mal|em sento malament|me siento mal/,
+  contagion: /contagi|transmis|contacte|infectar|puc.*contagiar|puedo contagiar|risc.*altres/
+};
+
+function pickAck(lang){
+  const list = (REPLY_STRINGS[lang] || REPLY_STRINGS.es).ack;
+  return list[Math.floor(Math.random()*list.length)];
 }
 
-function detectKbTopic(text){
+function detectKbTopicId(text){
   const t = norm(text);
-  return KB_TOPICS.find(topic => topic.match.test(t)) || null;
+  const id = Object.keys(KB_TOPIC_MATCHERS).find(key => KB_TOPIC_MATCHERS[key].test(t));
+  return id || null;
 }
 
-async function buildKbAnswer(queryText){
+async function buildKbAnswer(queryText, lang){
   if(!window.TB_KB) return null;
   try{
     await window.TB_KB.loadIndex();
@@ -241,7 +299,8 @@ async function buildKbAnswer(queryText){
       const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
       return plain.length > 220 ? plain.slice(0,220)+'…' : plain;
     });
-    return '📚 Amb tot el que m\'has explicat, això és el que diuen els documents de referència (en anglès): ' + parts.join(' · ');
+    const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
+    return s.kbIntro + parts.join(' · ');
   }catch(e){
     console.warn('Cerca a la base de coneixement ha fallat', e);
     return null;
@@ -261,37 +320,42 @@ async function advanceKbConversation(p, text, triageResult){
   }
 
   if(p.kbFlow){
-    const currentTopic = KB_TOPICS.find(tp => tp.id === p.kbFlow.topicId);
-    const maybeNewTopic = detectKbTopic(text);
-    if(!currentTopic){ delete p.kbFlow; return null; }
+    const lang = p.kbFlow.lang || detectLang(text);
+    const currentStrings = (REPLY_STRINGS[lang] || REPLY_STRINGS.es).topics[p.kbFlow.topicId];
+    const maybeNewTopicId = detectKbTopicId(text);
+    if(!currentStrings){ delete p.kbFlow; return null; }
 
-    if(maybeNewTopic && maybeNewTopic.id !== currentTopic.id){
+    if(maybeNewTopicId && maybeNewTopicId !== p.kbFlow.topicId){
       // El pacient ha canviat de tema enmig de la conversa: seguim el nou fil.
-      p.kbFlow = { topicId: maybeNewTopic.id, step: 0, originalText: text, answers: [] };
-      return maybeNewTopic.opener + maybeNewTopic.questions[0];
+      const newLang = detectLang(text);
+      const newStrings = REPLY_STRINGS[newLang].topics[maybeNewTopicId];
+      p.kbFlow = { topicId: maybeNewTopicId, lang: newLang, step: 0, originalText: text, answers: [] };
+      return newStrings.opener + newStrings.questions[0];
     }
 
     p.kbFlow.answers.push(text);
     const nextStep = p.kbFlow.step + 1;
-    if(nextStep < currentTopic.questions.length){
+    if(nextStep < currentStrings.questions.length){
       p.kbFlow.step = nextStep;
-      return pickAck() + currentTopic.questions[nextStep];
+      return pickAck(lang) + currentStrings.questions[nextStep];
     }
     // Ja tenim prou informació: componem la resposta final i tanquem el flux.
     const combined = [p.kbFlow.originalText, ...p.kbFlow.answers].join(' ');
     delete p.kbFlow;
-    const answer = await buildKbAnswer(combined);
+    const answer = await buildKbAnswer(combined, lang);
     return answer;
   }
 
-  const topic = detectKbTopic(text);
-  if(topic){
-    p.kbFlow = { topicId: topic.id, step: 0, originalText: text, answers: [] };
-    return topic.opener + topic.questions[0];
+  const topicId = detectKbTopicId(text);
+  if(topicId){
+    const lang = detectLang(text);
+    const strings = REPLY_STRINGS[lang].topics[topicId];
+    p.kbFlow = { topicId, lang, step: 0, originalText: text, answers: [] };
+    return strings.opener + strings.questions[0];
   }
 
   // Tema no reconegut: mantenim el comportament directe d'abans (sense preguntes).
-  return await buildKbAnswer(text);
+  return await buildKbAnswer(text, detectLang(text));
 }
 
 /* ---------------- state ---------------- */
@@ -465,7 +529,8 @@ async function sendMessage(){
   const p = patients[currentPatientId];
   p.messages.push({from:'patient', text, time:new Date().toISOString()});
   const tr = triage(text);
-  const reply = botReply(tr);
+  const lang = detectLang(text);
+  const reply = botReply(tr, lang);
   p.messages.push({from:'bot', text:reply, time:new Date().toISOString(), level: tr.level});
   if(tr.level==='urgent' || tr.level==='moderate'){
     if(!p.alerts) p.alerts = [];
