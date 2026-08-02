@@ -279,11 +279,62 @@ async function semanticRerank(englishQuery, candidates) {
   }
 }
 
+/* --- Reformulació en llenguatge planer (IA generativa, gratuïta, sense servidor) ---
+   A diferència del re-rank semàntic (que només tria QUIN fragment mostrar),
+   aquest pas reescriu el fragment ja triat en un llenguatge més senzill,
+   SENSE afegir informació nova: és una reformulació restringida, no una
+   generació lliure. Fem servir un model petit (Xenova/LaMini-Flan-T5-248M,
+   ~300MB, es descarrega un sol cop i queda cachejat) amb una instrucció molt
+   estricta de no afegir dades. Si el model no carrega o el resultat sembla
+   sospitós (molt més llarg que l'original, o buit), es descarta i es fa
+   servir el fragment original tal qual — mai s'ensenya un text generat sense
+   aquesta comprovació bàsica. */
+let generatorPromise = null;
+async function getGenerator() {
+  if (!generatorPromise) {
+    generatorPromise = (async () => {
+      const { pipeline, env } = await import(
+        "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2"
+      );
+      env.allowLocalModels = false;
+      return await pipeline("text2text-generation", "Xenova/LaMini-Flan-T5-248M", {
+        quantized: true,
+      });
+    })();
+  }
+  return generatorPromise;
+}
+
+/* Reescriu englishText en llenguatge planer, sense afegir informació.
+   Retorna null (mai el text original ni res inventat) si el model falla o
+   si el resultat no sembla fiable, perquè qui crida decideixi el fallback. */
+async function simplifyEnglishText(englishText) {
+  try {
+    const generator = await getGenerator();
+    const prompt =
+      "Rewrite the following sentence in simple, plain language for a patient. " +
+      "Do not add any new information, numbers, or advice that is not already there. " +
+      "Keep it short.\nSentence: " + englishText;
+    const out = await generator(prompt, { max_new_tokens: 120, do_sample: false });
+    const result = (out && out[0] && out[0].generated_text || "").trim();
+    if (!result) return null;
+    // Comprovació bàsica: si el resultat és molt més llarg que l'original,
+    // és més probable que el model hagi afegit contingut en lloc de
+    // reformular, així que el descartem per seguretat.
+    if (result.length > englishText.length * 1.6) return null;
+    return result;
+  } catch (e) {
+    console.warn("Reformulació en llenguatge planer no disponible", e);
+    return null;
+  }
+}
+
 window.TB_KB = {
   loadIndex,
   search,
   isReady: () => ready,
   semanticRerank,
+  simplifyEnglishText,
 };
 
 // --- Interfaz tipo chat (para kb/buscador.html) -----------------------------
