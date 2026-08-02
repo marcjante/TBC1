@@ -700,8 +700,20 @@ async function buildKbAnswer(queryText, lang, topicId){
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
     const plain = best.snippet.replace(/<[^>]+>/g,'').trim();
     const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
-    const translated = await translateSnippet(short, lang);
-    return s.kbIntro + (translated || (short + s.translationUnavailable + ')'));
+
+    // Pas addicional (IA generativa, gratuïta): reformulem el fragment en
+    // llenguatge planer ABANS de traduir. El model només reescriu el text ja
+    // trobat, no en pot afegir de nou (veure comprovacions a buscador.js).
+    // Si no es pot carregar o el resultat no sembla fiable, es fa servir el
+    // fragment original sense cap canvi.
+    let textToTranslate = short;
+    if(window.TB_KB.simplifyEnglishText){
+      const simplified = await window.TB_KB.simplifyEnglishText(short);
+      if(simplified) textToTranslate = simplified;
+    }
+
+    const translated = await translateSnippet(textToTranslate, lang);
+    return s.kbIntro + (translated || (textToTranslate + s.translationUnavailable + ')'));
   }catch(e){
     console.warn('Cerca a la base de coneixement ha fallat', e);
     return null;
