@@ -576,7 +576,39 @@ async function translateSnippet(text, lang){
   }
 }
 
-async function buildKbAnswer(queryText, lang){
+/* Paraules clau clíniques en anglès per a cada tema, per "ancorar" la cerca
+   al concepte correcte encara que el text del pacient sigui vague, en
+   castellà/català, o barrejat amb paraules que no aporten res a la cerca
+   (com "no ho sé" o "una mica"). Sense això, la cerca per paraules clau
+   podia agafar fragments poc relacionats amb la pregunta real. */
+const TOPIC_SEARCH_SEED = {
+  symptoms: "tuberculosis symptoms cough fever weight loss night sweats",
+  treatment: "tuberculosis drug treatment regimen dose duration",
+  side_effects: "adverse effects side effects tuberculosis treatment",
+  contagion: "tuberculosis transmission infectious contagious",
+  diagnosis_tests: "tuberculosis diagnosis tuberculin skin test IGRA chest X-ray sputum culture",
+  ltbi_vs_active: "latent tuberculosis infection versus active TB disease difference",
+  duration_completion: "treatment completion adherence stopping treatment early",
+  missed_dose_repeated: "missed doses adherence tuberculosis treatment",
+  drug_resistance: "drug-resistant multidrug-resistant MDR tuberculosis",
+  follow_up_visits: "follow-up monitoring visits during tuberculosis treatment",
+  isolation_precautions: "infection control isolation precautions tuberculosis",
+  work_school: "return to work school infectious period tuberculosis",
+  children_pediatric: "pediatric children tuberculosis treatment",
+  pregnancy_breastfeeding: "pregnancy breastfeeding tuberculosis treatment",
+  hiv_comorbidity: "HIV tuberculosis co-infection treatment",
+  diabetes_comorbidity: "diabetes tuberculosis comorbidity",
+  alcohol_liver: "hepatotoxicity liver alcohol tuberculosis treatment",
+  vaccination_bcg: "BCG vaccine vaccination tuberculosis",
+  diet_nutrition: "nutrition diet tuberculosis treatment",
+  travel: "travel infectious period tuberculosis",
+  cost_access: "access to treatment cost tuberculosis care",
+  stigma_disclosure: "stigma confidentiality disclosure tuberculosis",
+  elderly: "elderly older adults tuberculosis treatment",
+  relapse_cure: "cure relapse tuberculosis treatment outcome"
+};
+
+async function buildKbAnswer(queryText, lang, topicId){
   if(!window.TB_KB) return null;
   try{
     await window.TB_KB.loadIndex();
@@ -585,7 +617,14 @@ async function buildKbAnswer(queryText, lang){
     return null;
   }
   try{
-    const results = window.TB_KB.search(queryText, 2);
+    // Si sabem el tema, ancorem la cerca amb paraules clau clíniques en anglès
+    // (repetides per pesar més) perquè el resultat vagi al gra correcte encara
+    // que el text del pacient no coincideixi literalment amb el document.
+    const seed = topicId && TOPIC_SEARCH_SEED[topicId];
+    const effectiveQuery = seed ? (seed + ' ' + seed + ' ' + queryText) : queryText;
+    // Només ensenyem el fragment més rellevant (topK=1) per reduir el risc de
+    // mostrar un segon resultat poc relacionat amb la pregunta.
+    const results = window.TB_KB.search(effectiveQuery, 1);
     if(!results.length) return null;
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
     const parts = await Promise.all(results.map(async r=>{
@@ -635,8 +674,9 @@ async function advanceKbConversation(p, text, triageResult){
     }
     // Ja tenim prou informació: componem la resposta final i tanquem el flux.
     const combined = [p.kbFlow.originalText, ...p.kbFlow.answers].join(' ');
+    const finishedTopicId = p.kbFlow.topicId;
     delete p.kbFlow;
-    const answer = await buildKbAnswer(combined, lang);
+    const answer = await buildKbAnswer(combined, lang, finishedTopicId);
     return answer;
   }
 
@@ -648,8 +688,9 @@ async function advanceKbConversation(p, text, triageResult){
     return strings.opener + strings.questions[0];
   }
 
-  // Tema no reconegut: mantenim el comportament directe d'abans (sense preguntes).
-  return await buildKbAnswer(text, detectLang(text));
+  // Tema no reconegut: mantenim el comportament directe d'abans (sense preguntes,
+  // sense tema per ancorar la cerca, així que és menys precisa per naturalesa).
+  return await buildKbAnswer(text, detectLang(text), null);
 }
 
 /* ---------------- state ---------------- */
