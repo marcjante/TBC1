@@ -196,6 +196,127 @@ const REPLY_STRINGS = {
         questions: [
           "El dubte és sobre si tu pots contagiar algú altre, o sobre com et vas poder contagiar tu?"
         ]
+      },
+      diagnosis_tests: {
+        opener: "D'acord, parlem de les proves diagnòstiques. ",
+        questions: [
+          "Quina prova et preocupa: la de la pell (Mantoux), l'anàlisi de sang, la radiografia o el cultiu?",
+          "És per entendre com funciona la prova, o perquè ja t'han donat un resultat?"
+        ]
+      },
+      ltbi_vs_active: {
+        opener: "Bona pregunta, és un dubte molt habitual. ",
+        questions: [
+          "El que et confon és la diferència entre tenir la bactèria adormida (ITL) i tenir la malaltia activa (TBC)?"
+        ]
+      },
+      duration_completion: {
+        opener: "T'entenc, és normal preguntar-s'ho. ",
+        questions: [
+          "Estàs pensant a deixar-ho abans d'hora, o només vols saber per què cal completar tot el tractament?"
+        ]
+      },
+      missed_dose_repeated: {
+        opener: "Cap problema, ho parlem. ",
+        questions: [
+          "Quantes vegades aproximadament se t'ha oblidat en l'última setmana?"
+        ]
+      },
+      drug_resistance: {
+        opener: "Entenc la preocupació. ",
+        questions: [
+          "T'han dit que el teu cas és resistent, o preguntes en general sobre la resistència als fàrmacs?"
+        ]
+      },
+      follow_up_visits: {
+        opener: "D'acord, mirem el seguiment. ",
+        questions: [
+          "Vols saber quan és la propera visita, o què t'hi faran?"
+        ]
+      },
+      isolation_precautions: {
+        opener: "Molt bé, aclarim les precaucions. ",
+        questions: [
+          "El dubte és sobre quant de temps has d'estar aïllat, o sobre com fer-ho a casa (mascareta, ventilació)?"
+        ]
+      },
+      work_school: {
+        opener: "Ho entenc, és una pregunta molt pràctica. ",
+        questions: [
+          "Preguntes per tornar a la feina o per l'escola?"
+        ]
+      },
+      children_pediatric: {
+        opener: "D'acord, parlem del tractament en nens. ",
+        questions: [
+          "Quina edat té el nen o la nena?"
+        ]
+      },
+      pregnancy_breastfeeding: {
+        opener: "Gràcies per dir-ho, és important tenir-ho en compte. ",
+        questions: [
+          "El dubte és sobre l'embaràs o sobre la lactància?"
+        ]
+      },
+      hiv_comorbidity: {
+        opener: "D'acord, ho tenim en compte. ",
+        questions: [
+          "El dubte és sobre com interactuen els dos tractaments, o sobre alguna cosa concreta que has notat?"
+        ]
+      },
+      diabetes_comorbidity: {
+        opener: "D'acord, la diabetis és important tenir-la controlada durant el tractament. ",
+        questions: [
+          "Tens la diabetis ben controlada actualment?"
+        ]
+      },
+      alcohol_liver: {
+        opener: "Bona pregunta, té a veure amb el fetge. ",
+        questions: [
+          "Vols saber si pots beure alcohol, o et preocupa algun símptoma relacionat amb el fetge?"
+        ]
+      },
+      vaccination_bcg: {
+        opener: "D'acord, parlem de la vacuna BCG. ",
+        questions: [
+          "El dubte és sobre si t'has de vacunar ara, o sobre si la vacuna que et van posar de petit encara et protegeix?"
+        ]
+      },
+      diet_nutrition: {
+        opener: "D'acord, parlem de l'alimentació. ",
+        questions: [
+          "Vols saber si hi ha aliments a evitar, o si necessites algun suplement?"
+        ]
+      },
+      travel: {
+        opener: "D'acord, mirem el tema dels viatges. ",
+        questions: [
+          "El viatge és a prop o és un vol llarg, i saps si encara podries ser contagiós?"
+        ]
+      },
+      cost_access: {
+        opener: "D'acord, t'ho aclareixo. ",
+        questions: [
+          "El dubte és sobre el cost de la medicació o sobre les visites de seguiment?"
+        ]
+      },
+      stigma_disclosure: {
+        opener: "Entenc la preocupació, és un dubte molt comú. ",
+        questions: [
+          "El dubte és sobre si ho has de dir a la feina, a l'escola, o a la família?"
+        ]
+      },
+      elderly: {
+        opener: "D'acord, ho tenim en compte. ",
+        questions: [
+          "Preguntes per tu mateix o per una altra persona gran?"
+        ]
+      },
+      relapse_cure: {
+        opener: "Bona pregunta. ",
+        questions: [
+          "Ja has acabat el tractament, o encara l'estàs fent?"
+        ]
       }
     }
   },
@@ -234,6 +355,127 @@ const REPLY_STRINGS = {
         questions: [
           "¿La duda es sobre si tú puedes contagiar a otra persona, o sobre cómo te pudiste contagiar tú?"
         ]
+      },
+      diagnosis_tests: {
+        opener: "De acuerdo, hablamos de las pruebas diagnósticas. ",
+        questions: [
+          "¿Qué prueba te preocupa: la de la piel (Mantoux), el análisis de sangre, la radiografía o el cultivo?",
+          "¿Es para entender cómo funciona la prueba, o porque ya te han dado un resultado?"
+        ]
+      },
+      ltbi_vs_active: {
+        opener: "Buena pregunta, es una duda muy habitual. ",
+        questions: [
+          "¿Lo que te confunde es la diferencia entre tener la bacteria dormida (ITL) y tener la enfermedad activa (TBC)?"
+        ]
+      },
+      duration_completion: {
+        opener: "Te entiendo, es normal preguntárselo. ",
+        questions: [
+          "¿Estás pensando en dejarlo antes de tiempo, o solo quieres saber por qué hay que completar todo el tratamiento?"
+        ]
+      },
+      missed_dose_repeated: {
+        opener: "Sin problema, lo hablamos. ",
+        questions: [
+          "¿Cuántas veces aproximadamente se te ha olvidado en la última semana?"
+        ]
+      },
+      drug_resistance: {
+        opener: "Entiendo la preocupación. ",
+        questions: [
+          "¿Te han dicho que tu caso es resistente, o preguntas en general sobre la resistencia a los fármacos?"
+        ]
+      },
+      follow_up_visits: {
+        opener: "De acuerdo, miramos el seguimiento. ",
+        questions: [
+          "¿Quieres saber cuándo es la próxima visita, o qué te harán en ella?"
+        ]
+      },
+      isolation_precautions: {
+        opener: "Muy bien, aclaramos las precauciones. ",
+        questions: [
+          "¿La duda es sobre cuánto tiempo tienes que estar aislado, o sobre cómo hacerlo en casa (mascarilla, ventilación)?"
+        ]
+      },
+      work_school: {
+        opener: "Lo entiendo, es una pregunta muy práctica. ",
+        questions: [
+          "¿Preguntas por volver al trabajo o por el colegio?"
+        ]
+      },
+      children_pediatric: {
+        opener: "De acuerdo, hablamos del tratamiento en niños. ",
+        questions: [
+          "¿Qué edad tiene el niño o la niña?"
+        ]
+      },
+      pregnancy_breastfeeding: {
+        opener: "Gracias por decirlo, es importante tenerlo en cuenta. ",
+        questions: [
+          "¿La duda es sobre el embarazo o sobre la lactancia?"
+        ]
+      },
+      hiv_comorbidity: {
+        opener: "De acuerdo, lo tenemos en cuenta. ",
+        questions: [
+          "¿La duda es sobre cómo interactúan los dos tratamientos, o sobre algo concreto que has notado?"
+        ]
+      },
+      diabetes_comorbidity: {
+        opener: "De acuerdo, la diabetes es importante tenerla controlada durante el tratamiento. ",
+        questions: [
+          "¿Tienes la diabetes bien controlada actualmente?"
+        ]
+      },
+      alcohol_liver: {
+        opener: "Buena pregunta, tiene que ver con el hígado. ",
+        questions: [
+          "¿Quieres saber si puedes beber alcohol, o te preocupa algún síntoma relacionado con el hígado?"
+        ]
+      },
+      vaccination_bcg: {
+        opener: "De acuerdo, hablamos de la vacuna BCG. ",
+        questions: [
+          "¿La duda es sobre si tienes que vacunarte ahora, o sobre si la vacuna que te pusieron de pequeño todavía te protege?"
+        ]
+      },
+      diet_nutrition: {
+        opener: "De acuerdo, hablamos de la alimentación. ",
+        questions: [
+          "¿Quieres saber si hay alimentos a evitar, o si necesitas algún suplemento?"
+        ]
+      },
+      travel: {
+        opener: "De acuerdo, miramos el tema de los viajes. ",
+        questions: [
+          "¿El viaje es cerca o es un vuelo largo, y sabes si todavía podrías ser contagioso?"
+        ]
+      },
+      cost_access: {
+        opener: "De acuerdo, te lo aclaro. ",
+        questions: [
+          "¿La duda es sobre el coste de la medicación o sobre las visitas de seguimiento?"
+        ]
+      },
+      stigma_disclosure: {
+        opener: "Entiendo la preocupación, es una duda muy común. ",
+        questions: [
+          "¿La duda es sobre si tienes que decirlo en el trabajo, en el colegio, o en la familia?"
+        ]
+      },
+      elderly: {
+        opener: "De acuerdo, lo tenemos en cuenta. ",
+        questions: [
+          "¿Preguntas por ti mismo o por otra persona mayor?"
+        ]
+      },
+      relapse_cure: {
+        opener: "Buena pregunta. ",
+        questions: [
+          "¿Ya has terminado el tratamiento, o todavía lo estás haciendo?"
+        ]
       }
     }
   }
@@ -266,11 +508,38 @@ function botReply(triageResult, lang){
    Les preguntes del bot es responen en l'idioma detectat al primer missatge
    del tema (guardat a p.kbFlow.lang). El text del document en si segueix en
    anglès perquè els PDF originals estan en anglès (no hi ha traducció automàtica). */
+/* Cada tema té una llista àmplia de paraules/frases (castellà i català, sense
+   accents perquè es compara amb el text ja normalitzat) perquè el bot pugui
+   reconèixer moltes formulacions diferents de la mateixa pregunta habitual.
+   Els temes estan agrupats seguint els blocs de la bibliografia consultada
+   (OMS, CDC, ECDC, Ministeri de Sanitat): transmissió, diagnòstic, tractament
+   de la malaltia activa i de la ITL, efectes adversos, comorbiditats i grups
+   especials, seguiment i aspectes pràctics del dia a dia del pacient. */
 const KB_TOPIC_MATCHERS = {
-  symptoms: /tos|fiebre|febre|cansanci|fatiga|sudor|sintoma|malestar|molest|no.*trob.*be|no me encuentro bien|no estic be/,
-  treatment: /tractament|medicament|pastilla|dosi|isoniazid|rifampicin|rifapentin|pirazinamid|etambutol|durada|cuanto dura|quant.*dura|quan.*acaba|cuando termino/,
-  side_effects: /efecte|efectos|secundari|reaccio|nausea|vomit|picor|erupci|em fa mal|em sento malament|me siento mal/,
-  contagion: /contagi|transmis|contacte|infectar|puc.*contagiar|puedo contagiar|risc.*altres/
+  symptoms: /tos|fiebre|febre|cansanci|fatiga|sudor|sintoma|malestar|molest|no.*trob.*be|no me encuentro bien|no estic be|perdida de peso|perdua de pes|falta de aire|ofego/,
+  treatment: /tractament|medicament|pastilla|dosi|isoniazid|rifampicin|rifapentin|pirazinamid|etambutol|durada|cuanto dura|quant.*dura|quan.*acaba|cuando termino|horario|horari|en ayunas|en deju|con comida|amb menjar/,
+  side_effects: /efecte|efectos|secundari|reaccio|nausea|vomit|picor|erupci|em fa mal|em sento malament|me siento mal|orina naranja|orina taronja|lentillas|lentes de contacto|anticonceptiv/,
+  contagion: /contagi|transmis|contacte|infectar|puc.*contagiar|puedo contagiar|risc.*altres|mascarilla|mascareta|besar|petons|compartir plat/,
+  diagnosis_tests: /mantoux|tuberculina|ppd|quantiferon|igra|radiografia|rayos x|analisis de sangre|analisi de sang|cultivo|cultiu|prueba|prova|resultado|resultat/,
+  ltbi_vs_active: /diferencia.*latent|diferencia.*activ|infeccion latente|infeccio latent|estoy enfermo|estic malalt|tengo la bacteria|tinc.*bacteri/,
+  duration_completion: /dejar el tratamiento|deixar el tractament|parar.*tractament|parar.*tratamiento|completar.*tractament|completar.*tratamiento|abandonar/,
+  missed_dose_repeated: /me olvido a menudo|se m.oblida sovint|olvido varios dias|oblit.*diversos dies|recordar.*medicacion|recordar.*medicament/,
+  drug_resistance: /resistente|resistent|multirresistent|multidrogorresistent|mdr|no.*funciona.*tractament|no.*funciona.*tratamiento/,
+  follow_up_visits: /proxima visita|propera visita|control|revision|revisio|que pruebas|quines proves/,
+  isolation_precautions: /aislad|aillad|aillat|cuarentena|quarantena|ventilar|habitacion.*sol|habitacio.*sol/,
+  work_school: /trabajar|treballar|colegio|escola|feina|volver al trabajo|tornar a la feina|baja laboral/,
+  children_pediatric: /mi hijo|mi hija|el meu fill|la meva filla|nino|nina|pediatric/,
+  pregnancy_breastfeeding: /embaraz|embarass|lactancia|alletament/,
+  hiv_comorbidity: /\bvih\b|\bsida\b|\bhiv\b/,
+  diabetes_comorbidity: /diabet/,
+  alcohol_liver: /alcohol|beber|beure|higado|fetge/,
+  vaccination_bcg: /vacuna|vacunacio|\bbcg\b/,
+  diet_nutrition: /dieta|alimentacion|alimentacio|que puedo comer|que puc menjar/,
+  travel: /viajar|viatjar|avion|avio|vacaciones|vacances/,
+  cost_access: /gratis|gratuit|pagar|coste|cuesta|\bcost\b|preu|precio|seguro medico|assegurança/,
+  stigma_disclosure: /\bjefe\b|cap de feina|confidencial|se va a enterar|s.assabentara|verguenza|vergonya/,
+  elderly: /mayor|ancia|gran edat|persona gran/,
+  relapse_cure: /curad|curat|recaida|recaiguda|volver a tener|tornar a tenir/
 };
 
 function pickAck(lang){
