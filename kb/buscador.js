@@ -214,10 +214,75 @@ function search(query, topK = 12) {
 }
 
 // --- API pública para otras páginas/scripts (p. ej. script.js) -------------
+/* --- Re-rank semàntic (IA real, gratuïta, sense servidor) -------------------
+   search() només compta paraules; no "entén" que "puedo dejar el tratamiento
+   antes" i "stopping treatment early" volen dir el mateix. Per afegir una
+   mica de comprensió real i gratuïta, carreguem un petit model d'embeddings
+   (Transformers.js / Xenova, ~25-90MB, es descarrega un sol cop i queda
+   cachejat pel navegador) que calcula el "significat" d'un text com un
+   vector numèric, i comparem quin dels candidats de search() s'assembla més
+   en significat a la pregunta (no només en paraules soltes).
+   Si el model no es pot carregar (connexió lenta, mòbil antic, etc.) es
+   torna null i qui crida ha de seguir fent servir només search(). No fa
+   falta cap clau ni compte: el model es descarrega d'un CDN públic. */
+let embedderPromise = null;
+async function getEmbedder() {
+  if (!embedderPromise) {
+    embedderPromise = (async () => {
+      const { pipeline, env } = await import(
+        "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2"
+      );
+      env.allowLocalModels = false;
+      return await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+        quantized: true,
+      });
+    })();
+  }
+  return embedderPromise;
+}
+
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
+}
+
+async function embedText(embedder, text) {
+  const out = await embedder(text, { pooling: "mean", normalize: true });
+  return Array.from(out.data);
+}
+
+/* Reordena `candidates` (ja filtrats prèviament per search()) segons la
+   similitud de significat amb englishQuery (ha d'anar en anglès, com els
+   documents). Retorna null si el model no s'ha pogut carregar o falla per
+   qualsevol motiu — mai llança un error cap amunt. */
+async function semanticRerank(englishQuery, candidates) {
+  try {
+    const embedder = await getEmbedder();
+    const qVec = await embedText(embedder, englishQuery);
+    const scored = [];
+    for (const c of candidates) {
+      const plain = c.snippet.replace(/<[^>]+>/g, "");
+      const vec = await embedText(embedder, plain.slice(0, 400));
+      scored.push({ ...c, semScore: cosineSim(qVec, vec) });
+    }
+    scored.sort((a, b) => b.semScore - a.semScore);
+    return scored;
+  } catch (e) {
+    console.warn("Re-rank semàntic no disponible, es manté l'ordre per paraules clau", e);
+    return null;
+  }
+}
+
 window.TB_KB = {
   loadIndex,
   search,
   isReady: () => ready,
+  semanticRerank,
 };
 
 // --- Interfaz tipo chat (para kb/buscador.html) -----------------------------
