@@ -146,6 +146,12 @@ function triage(text){
   if(/olvide|olvido|se me paso|no he pres|no he tomado/.test(t)){
     return {level:'mild', label:'Oblit de dosi'};
   }
+  // "Necesito medicación" és una petició/necessitat, no una pregunta informativa:
+  // buscar-la als documents dona respostes fora de context (redactades per a
+  // personal sanitari, no per a pacients). Té una resposta directa pròpia.
+  if(/necesito medicacion|necesito la medicacion|necessito medicacio|necessito la medicacio|me quede sin medicacion|me he quedado sin (medicacion|pastillas)|se me acabo la medicacion|se me han acabado las pastillas|no tengo pastillas|no tinc pastilles|em falta la medicacio|m.he quedat sense medicacio/.test(t)){
+    return {level:'mild', label:'Necessitat de medicació'};
+  }
   if(/cansanci|fatiga|dolor de cabeza|mal de cap/.test(t)){
     return {level:'mild', label:'Símptoma lleu'};
   }
@@ -165,6 +171,7 @@ const REPLY_STRINGS = {
     urgent: "Aquest símptoma requereix valoració avui mateix. Contacta ara amb el teu equip de TBC; si empitjora o tens febre alta o dificultat per respirar, acut a urgències. No et prenguis la propera dosi fins parlar amb el professional.",
     moderate: "Pot tractar-se d'un efecte relacionat amb el tractament. Contacta amb el teu equip de referència en les properes 24–48h. No suspenguis la medicació pel teu compte.",
     mildForgot: "Si fa poques hores de l'horari habitual, pren la dosi oblidada. Si ja és a prop de la següent presa, no dupliquis dosi: continua la pauta normal.",
+    mildMedicationNeeded: "Si t'has quedat sense medicació o la necessites, contacta com abans millor amb la teva infermera o farmàcia de referència perquè te la puguin facilitar. No canviïs la dosi ni deixis de prendre-la pel teu compte mentrestant.",
     mildGeneric: "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.",
     infoDefault: "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.",
     ack: ["D'acord. ", "Entès. ", "Gràcies per explicar-ho. ", "Perfecte, seguim. ", "Molt bé. "],
@@ -325,6 +332,7 @@ const REPLY_STRINGS = {
     urgent: "Este síntoma requiere valoración hoy mismo. Contacta ahora con tu equipo de TBC; si empeora o tienes fiebre alta o dificultad para respirar, acude a urgencias. No te tomes la próxima dosis hasta hablar con el profesional.",
     moderate: "Puede tratarse de un efecto relacionado con el tratamiento. Contacta con tu equipo de referencia en las próximas 24–48h. No suspendas la medicación por tu cuenta.",
     mildForgot: "Si hace pocas horas del horario habitual, toma la dosis olvidada. Si ya está cerca de la siguiente toma, no dupliques dosis: continúa la pauta normal.",
+    mildMedicationNeeded: "Si te has quedado sin medicación o la necesitas, contacta cuanto antes con tu enfermera o farmacia de referencia para que te la puedan facilitar. No cambies la dosis ni dejes de tomarla por tu cuenta mientras tanto.",
     mildGeneric: "Anota el síntoma y coméntalo en la próxima visita. Contacta antes si empeora o aparecen otros.",
     infoDefault: "Gracias por el mensaje. Un profesional lo revisará. Contacta enseguida si tienes sangre en el esputo, fiebre alta, dificultad para respirar o color amarillento en piel u ojos.",
     ack: ["De acuerdo. ", "Entendido. ", "Gracias por explicarlo. ", "Perfecto, seguimos. ", "Muy bien. "],
@@ -490,6 +498,7 @@ function botReply(triageResult, lang){
     case 'moderate': return s.moderate;
     case 'mild':
       if(triageResult.label==='Oblit de dosi') return s.mildForgot;
+      if(triageResult.label==='Necessitat de medicació') return s.mildMedicationNeeded;
       return s.mildGeneric;
     default:
       return s.infoDefault;
@@ -668,6 +677,17 @@ async function buildKbAnswer(queryText, lang, topicId){
       if(reranked && reranked.length) best = reranked[0];
     }
 
+    // Filtre de confiança: si el model semàntic ha pogut comparar el
+    // significat i la millor coincidència encara és fluixa, és més honest
+    // no mostrar cap fragment (deixem que el missatge genèric de seguretat
+    // ho reculli) que ensenyar un text que sona a resposta "d'una altra
+    // conversa". Sense aquest pas, preguntes com "necesito medicación" (una
+    // petició, no una pregunta informativa) acabaven mostrant criteris de
+    // diagnòstic escrits per a personal sanitari, no per a pacients.
+    if(typeof best.semScore === 'number' && best.semScore < 0.32){
+      return null;
+    }
+
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
     const plain = best.snippet.replace(/<[^>]+>/g,'').trim();
     const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
@@ -685,9 +705,20 @@ async function buildKbAnswer(queryText, lang, topicId){
    Permet canviar de tema a mig flux (si el pacient escriu sobre un tema diferent
    i clarament reconegut, es reinicia el flux amb el tema nou) per sonar més
    fluid i menys com un formulari rígid. */
+// Etiquetes de triatge 'mild' que ja tenen una resposta directa i accionable
+// pròpia (botReply). No té sentit barrejar-les amb una conversa de temes
+// oberta: si el pacient diu "necesito medicación" enmig d'una conversa sobre
+// la tos, la resposta ha de ser sobre la medicació, no continuar preguntant
+// sobre la tos ni buscar als documents amb un text que ja no ve al cas.
+const MILD_LABELS_WITH_OWN_ANSWER = new Set(['Oblit de dosi', 'Necessitat de medicació']);
+
 async function advanceKbConversation(p, text, triageResult){
   if(triageResult.level === 'urgent' || triageResult.level === 'moderate'){
     delete p.kbFlow; // la seguretat sempre té prioritat: cancel·la qualsevol flux obert
+    return null;
+  }
+  if(triageResult.level === 'mild' && MILD_LABELS_WITH_OWN_ANSWER.has(triageResult.label)){
+    delete p.kbFlow; // ja té resposta pròpia (botReply); no cal ni s'ha de barrejar amb cap tema obert
     return null;
   }
 
