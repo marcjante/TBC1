@@ -608,6 +608,13 @@ const TOPIC_SEARCH_SEED = {
   relapse_cure: "cure relapse tuberculosis treatment outcome"
 };
 
+/* Alguns documents de la bibliografia són informes estadístics/de vigilància
+   (recomptes de casos, taules per país i any) i no contenen consells per a
+   pacients, però repeteixen molt paraules del domini ("tractament", "casos",
+   "mesos"...) i per pur recompte de paraules poden guanyar la cerca encara
+   que no responguin la pregunta. Els evitem quan hi ha alternativa millor. */
+const LOW_VALUE_TITLE_PATTERN = /surveillance|epidemiolog|global tuberculosis report|annual report|evaluaci[oó]n|vigilancia|informe de vigil/i;
+
 async function buildKbAnswer(queryText, lang, topicId){
   if(!window.TB_KB) return null;
   try{
@@ -622,18 +629,17 @@ async function buildKbAnswer(queryText, lang, topicId){
     // que el text del pacient no coincideixi literalment amb el document.
     const seed = topicId && TOPIC_SEARCH_SEED[topicId];
     const effectiveQuery = seed ? (seed + ' ' + seed + ' ' + queryText) : queryText;
-    // Només ensenyem el fragment més rellevant (topK=1) per reduir el risc de
-    // mostrar un segon resultat poc relacionat amb la pregunta.
-    const results = window.TB_KB.search(effectiveQuery, 1);
-    if(!results.length) return null;
+    // Demanem uns quants candidats i triem el primer que vingui d'un document
+    // de guia clínica, no d'un informe estadístic (encara que aquest últim
+    // hagi puntuat més alt per pura freqüència de paraules).
+    const candidates = window.TB_KB.search(effectiveQuery, 5);
+    if(!candidates.length) return null;
+    const best = candidates.find(r => !LOW_VALUE_TITLE_PATTERN.test(r.title || '')) || candidates[0];
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
-    const parts = await Promise.all(results.map(async r=>{
-      const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
-      const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
-      const translated = await translateSnippet(short, lang);
-      return translated || (short + s.translationUnavailable + ')');
-    }));
-    return s.kbIntro + parts.join(' · ');
+    const plain = best.snippet.replace(/<[^>]+>/g,'').trim();
+    const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
+    const translated = await translateSnippet(short, lang);
+    return s.kbIntro + (translated || (short + s.translationUnavailable + ')'));
   }catch(e){
     console.warn('Cerca a la base de coneixement ha fallat', e);
     return null;
