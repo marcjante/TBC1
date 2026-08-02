@@ -123,7 +123,7 @@ function computeVisits(type, startDateStr){
 
 /* ---------------- triage bot ---------------- */
 function norm(s){
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 }
 function triage(text){
   const t = norm(text);
@@ -163,6 +163,28 @@ function botReply(triageResult){
       return "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.";
     default:
       return "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.";
+  }
+}
+
+/* ---------------- consulta a la base de coneixement (kb/buscador.js) ----------------
+   Complementa la resposta de triatge amb informació dels documents de referència
+   (OMS/CDC/ECDC) NOMÉS quan el missatge no és una alerta urgent/moderada, per no
+   diluir mai un avís de seguretat amb informació documental. */
+function kbReplyIfRelevant(text, triageResult){
+  if(!window.TB_KB || !window.TB_KB.isReady()) return null;
+  if(triageResult.level === 'urgent' || triageResult.level === 'moderate') return null;
+  try{
+    const results = window.TB_KB.search(text, 2);
+    if(!results.length) return null;
+    const parts = results.map(r=>{
+      const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
+      const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
+      return `"${short}" (${r.category} ${r.year})`;
+    });
+    return '📚 Informació relacionada trobada als documents de referència (en anglès): ' + parts.join(' · ');
+  }catch(e){
+    console.warn('Cerca a la base de coneixement ha fallat', e);
+    return null;
   }
 }
 
@@ -346,6 +368,15 @@ async function sendMessage(){
   await savePatient(p);
   input.value='';
   renderChatView();
+
+  // Cerca a la base de coneixement en segon pla; si troba res rellevant,
+  // afegeix un missatge addicional sense bloquejar l'enviament principal.
+  const kbText = kbReplyIfRelevant(text, tr);
+  if(kbText){
+    p.messages.push({from:'bot', text:kbText, time:new Date().toISOString(), level:'info'});
+    await savePatient(p);
+    if(currentPatientId === p.id) renderChatView();
+  }
 }
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -541,4 +572,10 @@ if(useFirestore){
   }).catch(e=>{
     console.error('loadAll ha fallat:', e);
   });
+}
+
+/* Precarrega la base de coneixement TB (kb/buscador.js) en segon pla,
+   perquè estigui llesta quan el pacient escrigui el primer missatge. */
+if(window.TB_KB){
+  window.TB_KB.loadIndex().catch(e=> console.warn('Base de coneixement TB no disponible:', e));
 }
