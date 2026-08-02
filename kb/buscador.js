@@ -5,7 +5,7 @@
  * Requiere que kb/chunks.json esté publicado en el mismo repo (ver README_buscador.md).
  */
 
-const CHUNKS_URL = "kb/chunks.json"; // ajusta la ruta si lo colocas en otro sitio
+const CHUNKS_URL = "chunks.json"; // ajusta la ruta si lo colocas en otro sitio
 
 const STOPWORDS = new Set([
   "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por",
