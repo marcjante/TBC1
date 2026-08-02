@@ -1,12 +1,13 @@
+
 /**
  * Buscador estático sobre la base de conocimiento TB (chunks.json).
  * No usa IA generativa ni backend: todo corre en el navegador del usuario.
  *
  * Requiere que kb/chunks.json esté publicado en el mismo repo (ver README_buscador.md).
  */
-
-const CHUNKS_URL = "chunks.json"; // ajusta la ruta si lo colocas en otro sitio
-
+ 
+const CHUNKS_URL = "kb/chunks.json"; // ajusta la ruta si lo colocas en otro sitio
+ 
 const STOPWORDS = new Set([
   "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por",
   "un", "para", "con", "no", "una", "su", "al", "es", "lo", "como", "más",
@@ -15,24 +16,82 @@ const STOPWORDS = new Set([
   "amb", "no", "es", "del", "al", "com", "però", "són", "més", "seu", "seva",
   "the", "of", "and", "to", "in", "a", "is", "for", "on", "with",
 ]);
-
+ 
+// Diccionario español/catalán -> inglés para términos frecuentes de TB/ITL.
+// Los documentos originales están en inglés; esto permite buscar en español
+// expandiendo cada palabra reconocida con su equivalente en inglés.
+const DICT = {
+  tuberculosis: ["tuberculosis"], tb: ["tb", "tuberculosis"],
+  itl: ["ltbi", "latent"], latente: ["latent"], infeccion: ["infection"],
+  infeccioso: ["infectious"], contagio: ["transmission", "contagious"],
+  transmision: ["transmission"], contagioso: ["infectious", "contagious"],
+  tratamiento: ["treatment"], tractament: ["treatment"], duracion: ["duration"],
+  durada: ["duration"], dosis: ["dose", "dosage"], meses: ["months"],
+  semanas: ["weeks"], dias: ["days"], farmaco: ["drug"], farmacos: ["drugs"],
+  medicamento: ["drug", "medication"], medicamentos: ["drugs", "medications"],
+  isoniazida: ["isoniazid"], rifampicina: ["rifampicin", "rifampin"],
+  rifapentina: ["rifapentine"], pirazinamida: ["pyrazinamide"],
+  etambutol: ["ethambutol"], resistencia: ["resistance"],
+  resistente: ["resistant"], multirresistente: ["mdr", "multidrug-resistant"],
+  farmacorresistente: ["drug-resistant"],
+  sintoma: ["symptom"], sintomas: ["symptoms"], fiebre: ["fever"],
+  tos: ["cough"], sudores: ["sweats"], nocturnos: ["night"],
+  perdida: ["loss"], peso: ["weight"], hemoptisis: ["hemoptysis"],
+  cansancio: ["fatigue"], fatiga: ["fatigue"], dolor: ["pain"],
+  torax: ["chest"], toracico: ["thoracic", "chest"],
+  pulmonar: ["pulmonary"], pulmon: ["lung"], pulmones: ["lungs"],
+  diagnostico: ["diagnosis"], prueba: ["test"], pruebas: ["tests"],
+  cutanea: ["skin"], radiografia: ["x-ray", "radiography"],
+  esputo: ["sputum"], cultivo: ["culture"], baciloscopia: ["smear"],
+  sensibilidad: ["sensitivity"], especificidad: ["specificity"],
+  vacuna: ["vaccine", "vaccination"], vacunacion: ["vaccination"],
+  bcg: ["bcg"], prevencion: ["prevention"], profilaxis: ["prophylaxis"],
+  quimioprofilaxis: ["preventive", "prophylaxis"],
+  cribado: ["screening"], deteccion: ["detection", "screening"],
+  vigilancia: ["surveillance"], notificacion: ["notification", "reporting"],
+  epidemiologia: ["epidemiology"], incidencia: ["incidence"],
+  prevalencia: ["prevalence"], mortalidad: ["mortality"],
+  casos: ["cases"], caso: ["case"], brote: ["outbreak"],
+  contacto: ["contact"], contactos: ["contacts"], exposicion: ["exposure"],
+  aislamiento: ["isolation"], cuarentena: ["quarantine"],
+  recaida: ["relapse"], curacion: ["cure"], curado: ["cured"],
+  fracaso: ["failure"], abandono: ["default", "dropout"],
+  adherencia: ["adherence"], efectos: ["effects"], secundarios: ["side"],
+  reacciones: ["reactions"], adversos: ["adverse"],
+  niños: ["children"], niño: ["child"], pediatrico: ["pediatric"],
+  adultos: ["adults"], adulto: ["adult"], ancianos: ["elderly"],
+  embarazo: ["pregnancy"], embarazada: ["pregnant"], lactancia: ["breastfeeding"],
+  vih: ["hiv"], sida: ["aids"], diabetes: ["diabetes"],
+  inmunodeprimido: ["immunocompromised"], inmunosupresion: ["immunosuppression"],
+  comorbilidad: ["comorbidity"], riesgo: ["risk"], poblacion: ["population"],
+  migrantes: ["migrants"], prision: ["prison"], carcel: ["prison"],
+  personal: ["staff", "personnel", "workers"], sanitario: ["health"],
+  hospital: ["hospital"], enfermeria: ["nursing"], paciente: ["patient"],
+  pacientes: ["patients"], salud: ["health"], publica: ["public"],
+  guia: ["guideline"], guias: ["guidelines"], recomendacion: ["recommendation"],
+  recomendaciones: ["recommendations"], modulo: ["module"], informe: ["report"],
+  global: ["global"], mundial: ["global", "world"], europa: ["europe"],
+  españa: ["spain"], plan: ["plan"], estrategia: ["strategy"],
+  control: ["control"], eliminacion: ["elimination"], erradicacion: ["eradication"],
+};
+ 
 let chunks = [];
 let chunkTokens = [];
 let docFreq = new Map();
 let ready = false;
-
+ 
 function tokenize(text) {
   return (text || "")
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .match(/[a-z0-9]+/g) || [];
 }
-
+ 
 async function loadIndex(onProgress) {
   const res = await fetch(CHUNKS_URL);
   if (!res.ok) throw new Error("No se pudo cargar " + CHUNKS_URL);
   chunks = await res.json();
-
+ 
   docFreq = new Map();
   chunkTokens = chunks.map((c) => {
     const toks = tokenize(c.text).filter((t) => t.length > 2 && !STOPWORDS.has(t));
@@ -43,13 +102,13 @@ async function loadIndex(onProgress) {
   ready = true;
   if (onProgress) onProgress(chunks.length);
 }
-
+ 
 function idf(term) {
   const N = chunks.length || 1;
   const df = docFreq.get(term) || 0;
   return Math.log((N + 1) / (df + 1)) + 1;
 }
-
+ 
 function scoreChunk(queryTerms, toks) {
   if (toks.length === 0) return 0;
   const tf = new Map();
@@ -60,7 +119,7 @@ function scoreChunk(queryTerms, toks) {
   });
   return score;
 }
-
+ 
 function snippetAround(text, terms, radius = 160) {
   const lower = text.toLowerCase();
   let idx = -1;
@@ -73,7 +132,7 @@ function snippetAround(text, terms, radius = 160) {
   const end = Math.min(text.length, idx + radius);
   return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
 }
-
+ 
 function highlight(text, terms) {
   let out = text;
   terms.forEach((t) => {
@@ -83,16 +142,25 @@ function highlight(text, terms) {
   });
   return out;
 }
-
+ 
+function expandWithDictionary(terms) {
+  const expanded = new Set(terms);
+  terms.forEach((t) => {
+    if (DICT[t]) DICT[t].forEach((en) => expanded.add(en));
+  });
+  return [...expanded];
+}
+ 
 function search(query, topK = 12) {
-  const queryTerms = [...new Set(tokenize(query).filter((t) => t.length > 2 && !STOPWORDS.has(t)))];
+  const baseTerms = tokenize(query).filter((t) => t.length > 2 && !STOPWORDS.has(t));
+  const queryTerms = expandWithDictionary([...new Set(baseTerms)]);
   if (queryTerms.length === 0) return [];
-
+ 
   const scored = chunks.map((c, i) => ({
     chunk: c,
     score: scoreChunk(queryTerms, chunkTokens[i]),
   }));
-
+ 
   scored.sort((a, b) => b.score - a.score);
   return scored
     .filter((s) => s.score > 0)
@@ -102,42 +170,42 @@ function search(query, topK = 12) {
       snippet: highlight(snippetAround(s.chunk.text, queryTerms), queryTerms),
     }));
 }
-
+ 
 // --- Interfaz -------------------------------------------------------------
-
+ 
 function renderResults(results, container) {
   if (results.length === 0) {
-    container.innerHTML = '<p class="tb-empty">No s\'ha trobat cap resultat. Prova amb altres paraules.</p>';
+    container.innerHTML = '<p class="tb-empty">No se ha encontrado ningún resultado. Prueba con otras palabras.</p>';
     return;
   }
   container.innerHTML = results
     .map(
       (r) => `
       <article class="tb-result">
-        <div class="tb-result-meta">${r.category} · ${r.year} · pàg. ${r.page}</div>
+        <div class="tb-result-meta">${r.category} · ${r.year} · pág. ${r.page}</div>
         <h3 class="tb-result-title">${r.title}</h3>
         <p class="tb-result-snippet">${r.snippet}</p>
-        <a class="tb-result-link" href="${r.source_url}" target="_blank" rel="noopener">Veure document original</a>
+        <a class="tb-result-link" href="${r.source_url}" target="_blank" rel="noopener">Ver documento original</a>
       </article>`
     )
     .join("");
 }
-
+ 
 function initBuscadorTB({ inputId, buttonId, resultsId, statusId }) {
   const input = document.getElementById(inputId);
   const button = document.getElementById(buttonId);
   const results = document.getElementById(resultsId);
   const status = statusId ? document.getElementById(statusId) : null;
-
-  if (status) status.textContent = "Carregant base de coneixement…";
-
+ 
+  if (status) status.textContent = "Cargando base de conocimiento…";
+ 
   loadIndex((n) => {
-    if (status) status.textContent = `Llest (${n} fragments indexats).`;
+    if (status) status.textContent = `Listo (${n} fragmentos indexados). Puedes preguntar en español.`;
   }).catch((e) => {
-    if (status) status.textContent = "Error carregant la base de coneixement.";
+    if (status) status.textContent = "Error al cargar la base de conocimiento.";
     console.error(e);
   });
-
+ 
   function doSearch() {
     if (!ready) return;
     const q = input.value.trim();
@@ -148,11 +216,11 @@ function initBuscadorTB({ inputId, buttonId, resultsId, statusId }) {
     const r = search(q);
     renderResults(r, results);
   }
-
+ 
   button.addEventListener("click", doSearch);
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") doSearch();
   });
 }
-
+ 
 window.initBuscadorTB = initBuscadorTB;
