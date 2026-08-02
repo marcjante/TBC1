@@ -1,13 +1,19 @@
-
 /**
  * Buscador estático sobre la base de conocimiento TB (chunks.json).
  * No usa IA generativa ni backend: todo corre en el navegador del usuario.
  *
- * Requiere que kb/chunks.json esté publicado en el mismo repo (ver README_buscador.md).
+ * Requiere que kb/chunks.json esté publicado en el mismo repo.
+ *
+ * Este archivo se usa desde DOS sitios:
+ *   1. kb/buscador.html -> llama a initBuscadorTB() (página de búsqueda sola)
+ *   2. index.html (app principal) -> usa window.TB_KB.search() dentro del
+ *      xat de pacient (script.js) para complementar la respuesta de triatge.
+ * La ruta de chunks.json se calcula de forma relativa a ESTE script
+ * (document.currentScript), así que funciona sea cual sea la página que lo cargue.
  */
- 
-const CHUNKS_URL = "chunks.json"; // ajusta la ruta si lo colocas en otro sitio
- 
+
+const CHUNKS_URL = new URL("chunks.json", document.currentScript.src).href;
+
 const STOPWORDS = new Set([
   "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por",
   "un", "para", "con", "no", "una", "su", "al", "es", "lo", "como", "más",
@@ -16,7 +22,7 @@ const STOPWORDS = new Set([
   "amb", "no", "es", "del", "al", "com", "però", "són", "més", "seu", "seva",
   "the", "of", "and", "to", "in", "a", "is", "for", "on", "with",
 ]);
- 
+
 // Diccionario español/catalán -> inglés para términos frecuentes de TB/ITL.
 // Los documentos originales están en inglés; esto permite buscar en español
 // expandiendo cada palabra reconocida con su equivalente en inglés.
@@ -74,41 +80,49 @@ const DICT = {
   españa: ["spain"], plan: ["plan"], estrategia: ["strategy"],
   control: ["control"], eliminacion: ["elimination"], erradicacion: ["eradication"],
 };
- 
+
 let chunks = [];
 let chunkTokens = [];
 let docFreq = new Map();
 let ready = false;
- 
+let loadingPromise = null;
+
 function tokenize(text) {
   return (text || "")
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .match(/[a-z0-9]+/g) || [];
 }
- 
+
 async function loadIndex(onProgress) {
-  const res = await fetch(CHUNKS_URL);
-  if (!res.ok) throw new Error("No se pudo cargar " + CHUNKS_URL);
-  chunks = await res.json();
- 
-  docFreq = new Map();
-  chunkTokens = chunks.map((c) => {
-    const toks = tokenize(c.text).filter((t) => t.length > 2 && !STOPWORDS.has(t));
-    const uniq = new Set(toks);
-    uniq.forEach((t) => docFreq.set(t, (docFreq.get(t) || 0) + 1));
-    return toks;
-  });
-  ready = true;
-  if (onProgress) onProgress(chunks.length);
+  if (ready) { if (onProgress) onProgress(chunks.length); return; }
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = (async () => {
+    const res = await fetch(CHUNKS_URL);
+    if (!res.ok) throw new Error("No se pudo cargar " + CHUNKS_URL);
+    chunks = await res.json();
+
+    docFreq = new Map();
+    chunkTokens = chunks.map((c) => {
+      const toks = tokenize(c.text).filter((t) => t.length > 2 && !STOPWORDS.has(t));
+      const uniq = new Set(toks);
+      uniq.forEach((t) => docFreq.set(t, (docFreq.get(t) || 0) + 1));
+      return toks;
+    });
+    ready = true;
+    if (onProgress) onProgress(chunks.length);
+  })();
+
+  return loadingPromise;
 }
- 
+
 function idf(term) {
   const N = chunks.length || 1;
   const df = docFreq.get(term) || 0;
   return Math.log((N + 1) / (df + 1)) + 1;
 }
- 
+
 function scoreChunk(queryTerms, toks) {
   if (toks.length === 0) return 0;
   const tf = new Map();
@@ -119,7 +133,7 @@ function scoreChunk(queryTerms, toks) {
   });
   return score;
 }
- 
+
 function snippetAround(text, terms, radius = 160) {
   const lower = text.toLowerCase();
   let idx = -1;
@@ -132,7 +146,7 @@ function snippetAround(text, terms, radius = 160) {
   const end = Math.min(text.length, idx + radius);
   return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
 }
- 
+
 function highlight(text, terms) {
   let out = text;
   terms.forEach((t) => {
@@ -142,7 +156,7 @@ function highlight(text, terms) {
   });
   return out;
 }
- 
+
 function expandWithDictionary(terms) {
   const expanded = new Set(terms);
   terms.forEach((t) => {
@@ -150,17 +164,18 @@ function expandWithDictionary(terms) {
   });
   return [...expanded];
 }
- 
+
 function search(query, topK = 12) {
+  if (!ready) return [];
   const baseTerms = tokenize(query).filter((t) => t.length > 2 && !STOPWORDS.has(t));
   const queryTerms = expandWithDictionary([...new Set(baseTerms)]);
   if (queryTerms.length === 0) return [];
- 
+
   const scored = chunks.map((c, i) => ({
     chunk: c,
     score: scoreChunk(queryTerms, chunkTokens[i]),
   }));
- 
+
   scored.sort((a, b) => b.score - a.score);
   return scored
     .filter((s) => s.score > 0)
@@ -170,57 +185,90 @@ function search(query, topK = 12) {
       snippet: highlight(snippetAround(s.chunk.text, queryTerms), queryTerms),
     }));
 }
- 
-// --- Interfaz -------------------------------------------------------------
- 
-function renderResults(results, container) {
-  if (results.length === 0) {
-    container.innerHTML = '<p class="tb-empty">No se ha encontrado ningún resultado. Prueba con otras palabras.</p>';
-    return;
-  }
-  container.innerHTML = results
-    .map(
-      (r) => `
-      <article class="tb-result">
-        <div class="tb-result-meta">${r.category} · ${r.year} · pág. ${r.page}</div>
-        <h3 class="tb-result-title">${r.title}</h3>
-        <p class="tb-result-snippet">${r.snippet}</p>
-        <a class="tb-result-link" href="${r.source_url}" target="_blank" rel="noopener">Ver documento original</a>
-      </article>`
-    )
-    .join("");
+
+// --- API pública para otras páginas/scripts (p. ej. script.js) -------------
+window.TB_KB = {
+  loadIndex,
+  search,
+  isReady: () => ready,
+};
+
+// --- Interfaz tipo chat (para kb/buscador.html) -----------------------------
+
+function escapeHtml(str) {
+  return (str || "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
- 
+
+function addUserBubble(container, text) {
+  const row = document.createElement("div");
+  row.className = "tb-msg-row user";
+  row.innerHTML = `<div class="tb-bubble user">${escapeHtml(text)}</div>`;
+  container.appendChild(row);
+}
+
+function addBotBubble(container, results) {
+  const row = document.createElement("div");
+  row.className = "tb-msg-row bot";
+
+  let inner;
+  if (results.length === 0) {
+    inner = '<p class="tb-empty">No se ha encontrado ningún resultado. Prueba con otras palabras (recuerda que los documentos están en inglés; el buscador traduce algunos términos habituales, pero no todos).</p>';
+  } else {
+    inner = results
+      .map(
+        (r) => `
+        <div class="tb-result">
+          <div class="tb-result-meta">${r.category} · ${r.year} · pág. ${r.page}</div>
+          <h3 class="tb-result-title">${r.title}</h3>
+          <p class="tb-result-snippet">${r.snippet}</p>
+          <a class="tb-result-link" href="${r.source_url}" target="_blank" rel="noopener">Ver documento original</a>
+        </div>`
+      )
+      .join("");
+  }
+
+  row.innerHTML = `<div class="tb-bubble bot">${inner}</div>`;
+  container.appendChild(row);
+}
+
 function initBuscadorTB({ inputId, buttonId, resultsId, statusId }) {
   const input = document.getElementById(inputId);
   const button = document.getElementById(buttonId);
-  const results = document.getElementById(resultsId);
+  const chat = document.getElementById(resultsId);
   const status = statusId ? document.getElementById(statusId) : null;
- 
+
   if (status) status.textContent = "Cargando base de conocimiento…";
- 
+
   loadIndex((n) => {
     if (status) status.textContent = `Listo (${n} fragmentos indexados). Puedes preguntar en español.`;
   }).catch((e) => {
     if (status) status.textContent = "Error al cargar la base de conocimiento.";
     console.error(e);
   });
- 
+
+  function scrollToBottom() {
+    chat.scrollTop = chat.scrollHeight;
+  }
+
   function doSearch() {
     if (!ready) return;
     const q = input.value.trim();
-    if (!q) {
-      results.innerHTML = "";
-      return;
-    }
+    if (!q) return;
+
+    addUserBubble(chat, q);
     const r = search(q);
-    renderResults(r, results);
+    addBotBubble(chat, r);
+
+    input.value = "";
+    scrollToBottom();
   }
- 
+
   button.addEventListener("click", doSearch);
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") doSearch();
   });
 }
- 
+
 window.initBuscadorTB = initBuscadorTB;
