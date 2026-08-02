@@ -155,9 +155,23 @@ function snippetAround(text, terms, radius = 160) {
     if (i !== -1 && (idx === -1 || i < idx)) idx = i;
   }
   if (idx === -1) return text.slice(0, radius * 2) + (text.length > radius * 2 ? "…" : "");
-  const start = Math.max(0, idx - radius);
-  const end = Math.min(text.length, idx + radius);
-  return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+  let start = Math.max(0, idx - radius);
+  let end = Math.min(text.length, idx + radius);
+
+  // Intentem ajustar als límits de frase (punt seguit d'espai) més propers,
+  // perquè el fragment es llegeixi com una frase completa i no comenci o
+  // acabi a mig mot. Si no trobem un punt raonablement a prop, ens quedem
+  // amb el retall per caràcters d'abans (millor un tall net que cap resposta).
+  const sentenceStart = text.lastIndexOf(". ", idx);
+  if (sentenceStart !== -1 && idx - sentenceStart < radius * 1.5) {
+    start = sentenceStart + 2;
+  }
+  const sentenceEnd = text.indexOf(". ", idx);
+  if (sentenceEnd !== -1 && sentenceEnd - idx < radius * 1.5) {
+    end = sentenceEnd + 1;
+  }
+
+  return (start > 0 ? "…" : "") + text.slice(start, end).trim() + (end < text.length ? "…" : "");
 }
 
 function highlight(text, terms) {
