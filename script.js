@@ -239,8 +239,7 @@ async function buildKbAnswer(queryText){
     if(!results.length) return null;
     const parts = results.map(r=>{
       const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
-      const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
-      return `"${short}" (${r.category} ${r.year})`;
+      return plain.length > 220 ? plain.slice(0,220)+'…' : plain;
     });
     return '📚 Amb tot el que m\'has explicat, això és el que diuen els documents de referència (en anglès): ' + parts.join(' · ');
   }catch(e){
