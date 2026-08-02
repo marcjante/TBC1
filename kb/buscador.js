@@ -209,6 +209,7 @@ function search(query, topK = 12) {
     .slice(0, topK)
     .map((s) => ({
       ...s.chunk,
+      score: s.score,
       snippet: highlight(snippetAround(s.chunk.text, queryTerms), queryTerms),
     }));
 }
