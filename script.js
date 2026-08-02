@@ -168,7 +168,8 @@ const REPLY_STRINGS = {
     mildGeneric: "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.",
     infoDefault: "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.",
     ack: ["D'acord. ", "Entès. ", "Gràcies per explicar-ho. ", "Perfecte, seguim. ", "Molt bé. "],
-    kbIntro: "📚 Amb tot el que m'has explicat, això és el que diuen els documents de referència (en anglès): ",
+    kbIntro: "📚 Amb tot el que m'has explicat, això és el que diuen els documents de referència: ",
+    translationUnavailable: " (no s'ha pogut traduir ara mateix, text original en anglès: ",
     topics: {
       symptoms: {
         opener: "Sento que no et trobis del tot bé. ",
@@ -327,7 +328,8 @@ const REPLY_STRINGS = {
     mildGeneric: "Anota el síntoma y coméntalo en la próxima visita. Contacta antes si empeora o aparecen otros.",
     infoDefault: "Gracias por el mensaje. Un profesional lo revisará. Contacta enseguida si tienes sangre en el esputo, fiebre alta, dificultad para respirar o color amarillento en piel u ojos.",
     ack: ["De acuerdo. ", "Entendido. ", "Gracias por explicarlo. ", "Perfecto, seguimos. ", "Muy bien. "],
-    kbIntro: "📚 Con todo lo que me has explicado, esto es lo que dicen los documentos de referencia (en inglés): ",
+    kbIntro: "📚 Con todo lo que me has explicado, esto es lo que dicen los documentos de referencia: ",
+    translationUnavailable: " (no se ha podido traducir ahora mismo, texto original en inglés: ",
     topics: {
       symptoms: {
         opener: "Siento que no te encuentres del todo bien. ",
@@ -553,6 +555,27 @@ function detectKbTopicId(text){
   return id || null;
 }
 
+/* Tradueix un fragment curt (anglès -> lang) fent servir MyMemory, una API
+   pública i gratuïta de traducció (sense clau, sense backend propi). Si la
+   traducció falla o no hi ha connexió, retorna null i qui crida decideix
+   com mostrar-ho (per exemple, deixant el text original en anglès). */
+async function translateSnippet(text, lang){
+  if(lang !== 'ca' && lang !== 'es') return null;
+  try{
+    const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=en|' + lang;
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.quotaFinished) return null;
+    const translated = data.responseData && data.responseData.translatedText;
+    if(!translated || /INVALID|MYMEMORY WARNING/i.test(translated)) return null;
+    return translated;
+  }catch(e){
+    console.warn('Traducció automàtica no disponible', e);
+    return null;
+  }
+}
+
 async function buildKbAnswer(queryText, lang){
   if(!window.TB_KB) return null;
   try{
@@ -564,11 +587,13 @@ async function buildKbAnswer(queryText, lang){
   try{
     const results = window.TB_KB.search(queryText, 2);
     if(!results.length) return null;
-    const parts = results.map(r=>{
-      const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
-      return plain.length > 220 ? plain.slice(0,220)+'…' : plain;
-    });
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
+    const parts = await Promise.all(results.map(async r=>{
+      const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
+      const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
+      const translated = await translateSnippet(short, lang);
+      return translated || (short + s.translationUnavailable + ')');
+    }));
     return s.kbIntro + parts.join(' · ');
   }catch(e){
     console.warn('Cerca a la base de coneixement ha fallat', e);
