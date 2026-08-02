@@ -14,6 +14,16 @@
 
 const CHUNKS_URL = new URL("chunks.json", document.currentScript.src).href;
 
+function stripAccents(s) {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Les paraules es guarden ja sense accents (mateixa normalització que
+// tokenize()) perquè la comparació funcioni sempre. Abans "más"/"més"/"però"
+// mai coincidien amb els tokens normalitzats ("mas"/"mes"/"pero"), i paraules
+// curtes molt freqüents colaven com a termes de cerca "rars" i distorsionaven
+// els resultats (p. ex. "mas" acabava dominant la puntuació d'un fragment
+// no relacionat només perquè apareixia molt en un document concret).
 const STOPWORDS = new Set([
   "de", "la", "que", "el", "en", "y", "a", "los", "del", "se", "las", "por",
   "un", "para", "con", "no", "una", "su", "al", "es", "lo", "como", "más",
@@ -21,7 +31,10 @@ const STOPWORDS = new Set([
   "de", "la", "el", "que", "i", "a", "els", "les", "en", "un", "una", "per",
   "amb", "no", "es", "del", "al", "com", "però", "són", "més", "seu", "seva",
   "the", "of", "and", "to", "in", "a", "is", "for", "on", "with",
-]);
+  // Formes curtes addicionals que solen aparèixer en respostes de xat breus
+  "yo", "tu", "el", "ella", "esto", "eso", "aixo", "aquest", "aquesta",
+  "molt", "poco", "mucho", "algo", "nada", "bien", "mal", "igual",
+].map(stripAccents));
 
 // Diccionario español/catalán -> inglés para términos frecuentes de TB/ITL.
 // Los documentos originales están en inglés; esto permite buscar en español
