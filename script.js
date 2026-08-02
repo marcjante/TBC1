@@ -166,26 +166,111 @@ function botReply(triageResult){
   }
 }
 
-/* ---------------- consulta a la base de coneixement (kb/buscador.js) ----------------
+/* ---------------- consulta conversacional a la base de coneixement (kb/buscador.js) ----------------
    Complementa la resposta de triatge amb informació dels documents de referència
    (OMS/CDC/ECDC) NOMÉS quan el missatge no és una alerta urgent/moderada, per no
-   diluir mai un avís de seguretat amb informació documental. */
-function kbReplyIfRelevant(text, triageResult){
-  if(!window.TB_KB || !window.TB_KB.isReady()) return null;
-  if(triageResult.level === 'urgent' || triageResult.level === 'moderate') return null;
+   diluir mai un avís de seguretat amb informació documental.
+
+   No usa IA: és un petit arbre de preguntes per regles. Si el missatge coincideix
+   amb un tema conegut, el bot fa 1-2 preguntes de seguiment (guardades a
+   p.kbFlow) abans de donar la resposta final basada en els documents. Si no
+   reconeix cap tema, manté el comportament anterior (resposta directa si troba
+   res rellevant). Un símptoma urgent/moderat sempre cancel·la el flux en curs. */
+const KB_TOPICS = [
+  {
+    id: 'symptoms',
+    match: /tos|fiebre|febre|cansanci|fatiga|sudor|sintoma|malestar/,
+    questions: [
+      "Per entendre-ho millor: des de quan tens aquest símptoma?",
+      "Ha anat a més, es manté igual o ha millorat des que va començar?"
+    ]
+  },
+  {
+    id: 'treatment',
+    match: /tractament|medicament|pastilla|dosi|isoniazid|rifampicin|rifapentin|pirazinamid|etambutol|durada/,
+    questions: [
+      "Quin medicament del tractament et genera el dubte?",
+      "El dubte és sobre la dosi, la durada del tractament, o com prendre'l?"
+    ]
+  },
+  {
+    id: 'side_effects',
+    match: /efecte|efectos|secundari|reaccio|nausea|vomit|picor|erupci/,
+    questions: [
+      "Quin efecte concret has notat?",
+      "Des de quan el notes, i ha anat a més des que va aparèixer?"
+    ]
+  },
+  {
+    id: 'contagion',
+    match: /contagi|transmis|contacte|infectar/,
+    questions: [
+      "El dubte és sobre si tu pots contagiar algú altre, o sobre com et vas poder contagiar tu?"
+    ]
+  }
+];
+
+function detectKbTopic(text){
+  const t = norm(text);
+  return KB_TOPICS.find(topic => topic.match.test(t)) || null;
+}
+
+async function buildKbAnswer(queryText){
+  if(!window.TB_KB) return null;
   try{
-    const results = window.TB_KB.search(text, 2);
+    await window.TB_KB.loadIndex();
+  }catch(e){
+    console.warn('Base de coneixement TB no disponible', e);
+    return null;
+  }
+  try{
+    const results = window.TB_KB.search(queryText, 2);
     if(!results.length) return null;
     const parts = results.map(r=>{
       const plain = r.snippet.replace(/<[^>]+>/g,'').trim();
       const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
       return `"${short}" (${r.category} ${r.year})`;
     });
-    return '📚 Informació relacionada trobada als documents de referència (en anglès): ' + parts.join(' · ');
+    return '📚 Segons els documents de referència (en anglès): ' + parts.join(' · ');
   }catch(e){
     console.warn('Cerca a la base de coneixement ha fallat', e);
     return null;
   }
+}
+
+/* Gestiona el flux de conversa amb la base de coneixement per a un pacient.
+   Retorna el text que el bot ha de dir a continuació, o null si no hi ha res
+   a afegir. Modifica p.kbFlow directament (s'ha de cridar savePatient després). */
+async function advanceKbConversation(p, text, triageResult){
+  if(triageResult.level === 'urgent' || triageResult.level === 'moderate'){
+    delete p.kbFlow; // la seguretat sempre té prioritat: cancel·la qualsevol flux obert
+    return null;
+  }
+
+  if(p.kbFlow){
+    const topic = KB_TOPICS.find(tp => tp.id === p.kbFlow.topicId);
+    if(!topic){ delete p.kbFlow; return null; }
+    p.kbFlow.answers.push(text);
+    const nextStep = p.kbFlow.step + 1;
+    if(nextStep < topic.questions.length){
+      p.kbFlow.step = nextStep;
+      return topic.questions[nextStep];
+    }
+    // Ja tenim prou informació: componem la resposta final i tanquem el flux.
+    const combined = [p.kbFlow.originalText, ...p.kbFlow.answers].join(' ');
+    delete p.kbFlow;
+    const answer = await buildKbAnswer(combined);
+    return answer;
+  }
+
+  const topic = detectKbTopic(text);
+  if(topic){
+    p.kbFlow = { topicId: topic.id, step: 0, originalText: text, answers: [] };
+    return topic.questions[0];
+  }
+
+  // Tema no reconegut: mantenim el comportament directe d'abans (sense preguntes).
+  return await buildKbAnswer(text);
 }
 
 /* ---------------- state ---------------- */
@@ -369,13 +454,15 @@ async function sendMessage(){
   input.value='';
   renderChatView();
 
-  // Cerca a la base de coneixement en segon pla; si troba res rellevant,
-  // afegeix un missatge addicional sense bloquejar l'enviament principal.
-  const kbText = kbReplyIfRelevant(text, tr);
+  // Conversa amb la base de coneixement: pot ser una pregunta de seguiment
+  // (si el tema es reconeix i encara falten passos) o la resposta final.
+  const kbText = await advanceKbConversation(p, text, tr);
   if(kbText){
     p.messages.push({from:'bot', text:kbText, time:new Date().toISOString(), level:'info'});
     await savePatient(p);
     if(currentPatientId === p.id) renderChatView();
+  } else {
+    await savePatient(p); // per si advanceKbConversation ha esborrat p.kbFlow
   }
 }
 function escapeHtml(s){
