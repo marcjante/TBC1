@@ -155,6 +155,12 @@ function triage(text){
   if(/cansanci|fatiga|dolor de cabeza|mal de cap/.test(t)){
     return {level:'mild', label:'Símptoma lleu'};
   }
+  // Una salutació sola (no acompanyada de cap altre text) no ha de rebre
+  // l'avís genèric de seguretat, que espanta sense motiu: rep una benvinguda
+  // que convida el pacient a explicar què necessita.
+  if(/^(hola|hey|ei|buenas|buenos dias|buenos dias|buenas tardes|buenas noches|bon dia|bona tarda|bon vespre|bona nit|que tal|hi|hello)[\s!?.,¡¿]*$/.test(t)){
+    return {level:'info', label:'Salutació'};
+  }
   return {level:'info', label:'Consulta general'};
 }
 /* Detecta si el pacient escriu en català o castellà, a partir de paraules
@@ -173,6 +179,7 @@ const REPLY_STRINGS = {
     mildForgot: "Si fa poques hores de l'horari habitual, pren la dosi oblidada. Si ja és a prop de la següent presa, no dupliquis dosi: continua la pauta normal.",
     mildMedicationNeeded: "Si t'has quedat sense medicació o la necessites, contacta com abans millor amb la teva infermera o farmàcia de referència perquè te la puguin facilitar. No canviïs la dosi ni deixis de prendre-la pel teu compte mentrestant.",
     mildGeneric: "Anota el símptoma i comenta'l a la propera visita. Contacta abans si empitjora o n'apareixen d'altres.",
+    greeting: "Hola! Sóc aquí per ajudar-te durant el tractament. Explica'm què necessites (un símptoma que has notat, un dubte sobre la medicació, els efectes secundaris, etc.) i mirem de trobar-te una resposta.",
     infoDefault: "Gràcies pel missatge. Un professional el revisarà. Contacta de seguida si tens sang a l'esput, febre alta, dificultat per respirar o color groguenc a pell o ulls.",
     ack: ["D'acord. ", "Entès. ", "Gràcies per explicar-ho. ", "Perfecte, seguim. ", "Molt bé. "],
     kbIntro: "📚 Amb tot el que m'has explicat, això és el que diuen els documents de referència: ",
@@ -334,6 +341,7 @@ const REPLY_STRINGS = {
     mildForgot: "Si hace pocas horas del horario habitual, toma la dosis olvidada. Si ya está cerca de la siguiente toma, no dupliques dosis: continúa la pauta normal.",
     mildMedicationNeeded: "Si te has quedado sin medicación o la necesitas, contacta cuanto antes con tu enfermera o farmacia de referencia para que te la puedan facilitar. No cambies la dosis ni dejes de tomarla por tu cuenta mientras tanto.",
     mildGeneric: "Anota el síntoma y coméntalo en la próxima visita. Contacta antes si empeora o aparecen otros.",
+    greeting: "¡Hola! Estoy aquí para ayudarte durante el tratamiento. Cuéntame qué necesitas (un síntoma que hayas notado, una duda sobre la medicación, los efectos secundarios, etc.) y buscamos la respuesta.",
     infoDefault: "Gracias por el mensaje. Un profesional lo revisará. Contacta enseguida si tienes sangre en el esputo, fiebre alta, dificultad para respirar o color amarillento en piel u ojos.",
     ack: ["De acuerdo. ", "Entendido. ", "Gracias por explicarlo. ", "Perfecto, seguimos. ", "Muy bien. "],
     kbIntro: "📚 Con todo lo que me has explicado, esto es lo que dicen los documentos de referencia: ",
@@ -501,6 +509,7 @@ function botReply(triageResult, lang){
       if(triageResult.label==='Necessitat de medicació') return s.mildMedicationNeeded;
       return s.mildGeneric;
     default:
+      if(triageResult.label==='Salutació') return s.greeting;
       return s.infoDefault;
   }
 }
@@ -719,6 +728,10 @@ async function advanceKbConversation(p, text, triageResult){
   }
   if(triageResult.level === 'mild' && MILD_LABELS_WITH_OWN_ANSWER.has(triageResult.label)){
     delete p.kbFlow; // ja té resposta pròpia (botReply); no cal ni s'ha de barrejar amb cap tema obert
+    return null;
+  }
+  if(triageResult.label === 'Salutació'){
+    delete p.kbFlow; // una salutació sola no ha de buscar als documents ni continuar cap flux obert
     return null;
   }
 
