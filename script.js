@@ -576,6 +576,26 @@ async function translateSnippet(text, lang){
   }
 }
 
+/* Tradueix un text del pacient (lang -> anglès) per poder-lo comparar amb
+   els documents (que estan en anglès) fent servir el model d'embeddings.
+   Mateixa API gratuïta que translateSnippet, en la direcció contrària. */
+async function translateToEnglish(text, lang){
+  if(lang !== 'ca' && lang !== 'es') return null;
+  try{
+    const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=' + lang + '|en';
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.quotaFinished) return null;
+    const translated = data.responseData && data.responseData.translatedText;
+    if(!translated || /INVALID|MYMEMORY WARNING/i.test(translated)) return null;
+    return translated;
+  }catch(e){
+    console.warn('Traducció a l\'anglès no disponible', e);
+    return null;
+  }
+}
+
 /* Paraules clau clíniques en anglès per a cada tema, per "ancorar" la cerca
    al concepte correcte encara que el text del pacient sigui vague, en
    castellà/català, o barrejat amb paraules que no aporten res a la cerca
@@ -629,12 +649,25 @@ async function buildKbAnswer(queryText, lang, topicId){
     // que el text del pacient no coincideixi literalment amb el document.
     const seed = topicId && TOPIC_SEARCH_SEED[topicId];
     const effectiveQuery = seed ? (seed + ' ' + seed + ' ' + queryText) : queryText;
-    // Demanem uns quants candidats i triem el primer que vingui d'un document
-    // de guia clínica, no d'un informe estadístic (encara que aquest últim
-    // hagi puntuat més alt per pura freqüència de paraules).
-    const candidates = window.TB_KB.search(effectiveQuery, 5);
+    // Demanem uns quants candidats per paraules clau i descartem els que
+    // vinguin d'informes estadístics (encara que hagin puntuat més alt).
+    const candidates = window.TB_KB.search(effectiveQuery, 8);
     if(!candidates.length) return null;
-    const best = candidates.find(r => !LOW_VALUE_TITLE_PATTERN.test(r.title || '')) || candidates[0];
+    const filtered = candidates.filter(r => !LOW_VALUE_TITLE_PATTERN.test(r.title || ''));
+    const pool = filtered.length ? filtered : candidates;
+
+    // Pas addicional (IA real, gratuïta): si el model d'embeddings s'ha pogut
+    // carregar al navegador, reordenem `pool` per significat real, no només
+    // per paraules coincidents. Traduïm primer la pregunta a l'anglès perquè
+    // es pugui comparar amb els documents. Si qualsevol part d'això falla,
+    // seguim amb l'ordre de search() sense trencar la resposta.
+    let best = pool[0];
+    if(window.TB_KB.semanticRerank){
+      const englishQuery = ((seed || '') + '. ' + (await translateToEnglish(queryText, lang) || queryText)).trim();
+      const reranked = await window.TB_KB.semanticRerank(englishQuery, pool);
+      if(reranked && reranked.length) best = reranked[0];
+    }
+
     const s = REPLY_STRINGS[lang] || REPLY_STRINGS.es;
     const plain = best.snippet.replace(/<[^>]+>/g,'').trim();
     const short = plain.length > 220 ? plain.slice(0,220)+'…' : plain;
